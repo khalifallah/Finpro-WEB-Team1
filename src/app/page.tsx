@@ -1,107 +1,211 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { axiosInstance } from "@/libs/axios/axios.config";
-import axios from "axios";
-import Image from "next/image";
+import Navbar from "@/components/Navbar";
+import HeroSection from "@/components/HeroSection";
+import ProductList from "@/components/ProductList";
+import Footer from "@/components/Footer";
+import LocationPermissionModal from "@/components/LocationPermissionModal";
 
-export default async function Home() {
-	const res = await axios.get("http://localhost:8000/api/samples");
-	const { message } = res.data;
-	return (
-		<div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-			<main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-				<Image
-					className="dark:invert"
-					src="/next.svg"
-					alt="Next.js logo"
-					width={180}
-					height={38}
-					priority
-				/>
-				<ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-					<li className="mb-2 tracking-[-.01em]">
-						Get started by editing {message}
-						<code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-							src/app/page.tsx
-						</code>
-						.
-					</li>
-					<li className="tracking-[-.01em]">
-						Save and see your changes instantly.
-					</li>
-				</ol>
+export default function Home() {
+  const [homepageData, setHomepageData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [selectedStore, setSelectedStore] = useState<any>(null);
 
-				<div className="flex gap-4 items-center flex-col sm:flex-row">
-					<a
-						className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-						href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
-						<Image
-							className="dark:invert"
-							src="/vercel.svg"
-							alt="Vercel logomark"
-							width={20}
-							height={20}
-						/>
-						Deploy now
-					</a>
-					<a
-						className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-						href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
-						Read our docs
-					</a>
-				</div>
-			</main>
-			<footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-				<a
-					className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-					href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-					target="_blank"
-					rel="noopener noreferrer"
-				>
-					<Image
-						aria-hidden
-						src="/file.svg"
-						alt="File icon"
-						width={16}
-						height={16}
-					/>
-					Learn
-				</a>
-				<a
-					className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-					href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-					target="_blank"
-					rel="noopener noreferrer"
-				>
-					<Image
-						aria-hidden
-						src="/window.svg"
-						alt="Window icon"
-						width={16}
-						height={16}
-					/>
-					Examples
-				</a>
-				<a
-					className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-					href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-					target="_blank"
-					rel="noopener noreferrer"
-				>
-					<Image
-						aria-hidden
-						src="/globe.svg"
-						alt="Globe icon"
-						width={16}
-						height={16}
-					/>
-					Go to nextjs.org →
-				</a>
-			</footer>
-		</div>
-	);
+  // Function to get user's location
+  const getUserLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation({ latitude, longitude });
+        fetchHomepageData(latitude, longitude);
+        setShowLocationModal(false);
+      },
+      (err) => {
+        console.error("Error getting location:", err);
+        // Fallback to default store
+        fetchHomepageData();
+        setShowLocationModal(false);
+      }
+    );
+  };
+
+  // Function to fetch homepage data
+  const fetchHomepageData = async (lat?: number, lng?: number) => {
+    try {
+      setLoading(true);
+      const params: any = { page: 1, limit: 12 };
+      
+      if (lat && lng) {
+        params.lat = lat;
+        params.lng = lng;
+      }
+
+      const res = await axiosInstance.get("/homepage", { params });
+      setHomepageData(res.data.data);
+      setSelectedStore(res.data.data.productList.store);
+    } catch (err: any) {
+      console.error("Error fetching homepage data:", err);
+      setError(err.message || "Failed to load homepage data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Check for location permission on component mount
+  useEffect(() => {
+    // Check if we have previously stored location
+    const storedLocation = localStorage.getItem("userLocation");
+    
+    if (storedLocation) {
+      const location = JSON.parse(storedLocation);
+      setUserLocation(location);
+      fetchHomepageData(location.latitude, location.longitude);
+    } else {
+      // Show modal to request location permission
+      setTimeout(() => {
+        setShowLocationModal(true);
+      }, 1000);
+      
+      // If user doesn't give permission, fetch with default store
+      fetchHomepageData();
+    }
+  }, []);
+
+  // Handle location permission acceptance
+  const handleAcceptLocation = () => {
+    getUserLocation();
+  };
+
+  // Handle location permission denial
+  const handleDenyLocation = () => {
+    setShowLocationModal(false);
+    fetchHomepageData(); // Fetch with default store
+  };
+
+  // Handle store change (if user wants to manually select a store)
+  const handleStoreChange = (storeId: number) => {
+    // In a real implementation, you would update the store and refetch products
+    console.log("Store changed to:", storeId);
+  };
+
+  if (loading && !homepageData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="loading loading-spinner loading-lg"></span>
+      </div>
+    );
+  }
+
+  if (error && !homepageData) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="alert alert-error max-w-md">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="stroke-current shrink-0 h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span>Error: {error}</span>
+        </div>
+        <button 
+          className="btn btn-primary mt-4"
+          onClick={() => fetchHomepageData()}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Location Permission Modal */}
+      <LocationPermissionModal
+        isOpen={showLocationModal}
+        onAccept={handleAcceptLocation}
+        onDeny={handleDenyLocation}
+      />
+
+      {/* Navigation Bar */}
+      <Navbar
+        categories={homepageData?.navigation.categories || []}
+        featuredLinks={homepageData?.navigation.featuredLinks || []}
+        selectedStore={selectedStore}
+        onStoreChange={handleStoreChange}
+      />
+
+      {/* Main Content */}
+      <main className="flex-grow">
+        {/* Hero Section */}
+        <HeroSection carousel={homepageData?.heroSection.carousel || []} />
+
+        {/* Store Information */}
+        {selectedStore && (
+          <div className="container mx-auto px-4 py-6">
+            <div className="alert alert-info">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                className="stroke-current shrink-0 w-6 h-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+              <div>
+                <h3 className="font-bold">Shopping from: {selectedStore.name}</h3>
+                <div className="text-xs">
+                  {selectedStore.address}
+                  {selectedStore.distance && (
+                    <span> • {selectedStore.distance.toFixed(1)} km away</span>
+                  )}
+                </div>
+              </div>
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={() => setShowLocationModal(true)}
+              >
+                Change Location
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Product List */}
+        <ProductList
+          products={homepageData?.productList.products || []}
+          pagination={homepageData?.productList.pagination}
+          loading={loading}
+        />
+      </main>
+
+      {/* Footer */}
+      <Footer footerData={homepageData?.footer} />
+    </div>
+  );
 }
