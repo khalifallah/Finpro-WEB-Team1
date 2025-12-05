@@ -8,6 +8,7 @@
 		"start": "next start"
 	},
 	"dependencies": {
+		"@react-oauth/google": "^0.12.2",
 		"axios": "^1.11.0",
 		"cookies-next": "^6.1.0",
 		"formik": "^2.4.6",
@@ -15,6 +16,7 @@
 		"next": "15.5.4",
 		"react": "19.1.0",
 		"react-dom": "19.1.0",
+		"react-icons": "^5.5.0",
 		"sonner": "^2.0.7",
 		"yup": "^1.7.0"
 	},
