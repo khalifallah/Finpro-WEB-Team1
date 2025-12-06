@@ -1,30 +1,25 @@
-import React, { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+'use client';
 
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  category: {
-    id: number;
-    name: string;
-  };
-  images: Array<{
-    id: number;
-    imageUrl: string;
-  }>;
-  canAddToCart: boolean;
-}
+import React, { useState } from "react";
+import { ProductResponse } from "@/types/product.types"; // ← TAMBAH (1)
+import { useAuth } from "@/hooks/useAuth"; // ← UPDATE (2)
 
 interface ProductCardProps {
-  product: Product;
+  product: ProductResponse; // ← UPDATE (3)
+  onViewDetails?: () => void; // ← TAMBAH (4)
+  onAddToCart?: () => void; // ← TAMBAH (4)
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ 
+  product, 
+  onViewDetails, 
+  onAddToCart 
+}) => {
   const [quantity, setQuantity] = useState(1);
-  const { user } = useAuth();
+  const { isAuthenticated } = useAuth(); // ← UPDATE (5)
+
+  // ✅ UPDATE: Gunakan product.productImages (sesuai backend)
+  const imageUrl = product.productImages?.[0]?.imageUrl || "https://via.placeholder.com/300x200";
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -35,42 +30,31 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   };
 
  const handleAddToCart = () => {
-    if (!user) {
-      // Store redirect path and show login prompt
+    if (!isAuthenticated) { // ← UPDATE (6)
       localStorage.setItem("redirectAfterLogin", window.location.pathname);
       window.location.href = "/login";
       return;
     }
     
-    if (!user.emailVerifiedAt) {
-      alert("Please verify your email before adding items to cart.");
-      return;
-    }
-    
-    // Implement add to cart functionality
     console.log("Added to cart:", product.id, quantity);
+    onAddToCart?.(); // ← TAMBAH (7)
   };
 
   const handleQuickView = () => {
-    // Implement quick view functionality
     console.log("Quick view:", product.id);
+    onViewDetails?.(); // ← TAMBAH (8)
   };
 
-  const isAddToCartDisabled = !user || !user.emailVerifiedAt || !product.canAddToCart;
-  const addToCartTooltip = !user 
-    ? "Please login to add to cart" 
-    : !user.emailVerifiedAt 
-      ? "Please verify your email to add to cart" 
-      : !product.canAddToCart 
-        ? "Out of stock" 
-        : "";
+  // ✅ UPDATE: Gunakan product.canAddToCart dari backend
+  const isOutOfStock = !product.canAddToCart || product.stock === 0;
+  const isAddToCartDisabled = !isAuthenticated || isOutOfStock; // ← UPDATE (9)
 
   return (
     <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300">
       {/* Product Image */}
       <figure className="relative h-48 overflow-hidden">
         <img
-          src={product.images[0]?.imageUrl || "https://via.placeholder.com/300x200"}
+          src={imageUrl} // ← UPDATE (10)
           alt={product.name}
           className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
         />
@@ -143,9 +127,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             className="btn btn-primary btn-sm flex-1"
             onClick={handleAddToCart}
             disabled={isAddToCartDisabled}
-            title={addToCartTooltip}
           >
-            {!user ? (
+            {!isAuthenticated ? (
               <>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -163,44 +146,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 </svg>
                 Login to Add
               </>
-            ) : !user.emailVerifiedAt ? (
-              <>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                  />
-                </svg>
-                Verify to Add
-              </>
-            ) : product.canAddToCart ? (
-              <>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-                Add to Cart
-              </>
-            ) : (
+            ) : isOutOfStock ? (
               "Out of Stock"
+            ) : (
+              "Add to Cart"
             )}
           </button>
           <button
