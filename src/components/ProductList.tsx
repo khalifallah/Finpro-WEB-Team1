@@ -1,7 +1,7 @@
 import React from "react";
 import ProductCard from "./ProductCard";
 import { ProductResponse } from '@/types/product.types'; // ← TAMBAH (1)
-import Pagination from "./common/Pagnination" // ← TAMBAH (2)
+import Pagination from "./common/Pagination" // ← TAMBAH (2)
 
 interface PaginationData {
   page: number;

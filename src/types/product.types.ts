@@ -1,4 +1,4 @@
-// Request types
+// ============ REQUEST TYPES ============
 export interface ProductQuery {
   search?: string;
   categoryId?: number;
@@ -24,7 +24,11 @@ export interface UpdateProductRequest {
   categoryId?: number;
 }
 
-// Response types (sesuai backend)
+// ============ RESPONSE TYPES ============
+
+/**
+ * Single Product Response
+ */
 export interface ProductResponse {
   id: number;
   name: string;
@@ -36,19 +40,55 @@ export interface ProductResponse {
   canAddToCart: boolean;
 }
 
-// Pagination response
-export interface ProductListResponse {
-  products: ProductResponse[];
-  total: number;
+/**
+ * Pagination Info (sesuai backend)
+ */
+export interface PaginationInfo {
   page: number;
   limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage?: boolean;
+  hasPrevPage?: boolean;
 }
+
+/**
+ * Match backend response structure
+ * Backend returns: { data: { products, total }, pagination: {...} }
+ */
+export interface ProductListResponse {
+  data: {
+    products: ProductResponse[];
+    total: number; // ✅ Tambahkan ini
+  };
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+/**
+ * Alternative: If backend wraps everything in response
+ */
+export interface ApiProductListResponse {
+  success?: boolean;
+  message?: string;
+  data: {
+    products: ProductResponse[];
+    total: number;
+  };
+  pagination: PaginationInfo;
+}
+
+// ============ CATEGORY TYPES ============
 
 export interface CategoryResponse {
   id: number;
   name: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface CreateCategoryRequest {
