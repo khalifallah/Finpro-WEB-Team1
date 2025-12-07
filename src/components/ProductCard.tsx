@@ -20,9 +20,10 @@ interface Product {
 
 interface ProductCardProps {
   product: Product;
+  onAddToCart?: (productId: number, quantity: number) => void; // Add this
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
   const [quantity, setQuantity] = useState(1);
   const { user } = useAuth();
 
@@ -34,21 +35,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     }).format(price);
   };
 
- const handleAddToCart = () => {
+  const handleAddToCart = () => {
     if (!user) {
       // Store redirect path and show login prompt
       localStorage.setItem("redirectAfterLogin", window.location.pathname);
       window.location.href = "/login";
       return;
     }
-    
+
     if (!user.emailVerifiedAt) {
       alert("Please verify your email before adding items to cart.");
       return;
     }
-    
-    // Implement add to cart functionality
-    console.log("Added to cart:", product.id, quantity);
+
+    // Call the parent's add to cart function
+    if (onAddToCart) {
+      onAddToCart(product.id, quantity);
+    }
   };
 
   const handleQuickView = () => {
@@ -56,21 +59,24 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     console.log("Quick view:", product.id);
   };
 
-  const isAddToCartDisabled = !user || !user.emailVerifiedAt || !product.canAddToCart;
-  const addToCartTooltip = !user 
-    ? "Please login to add to cart" 
-    : !user.emailVerifiedAt 
-      ? "Please verify your email to add to cart" 
-      : !product.canAddToCart 
-        ? "Out of stock" 
-        : "";
+  const isAddToCartDisabled =
+    !user || !user.emailVerifiedAt || !product.canAddToCart;
+  const addToCartTooltip = !user
+    ? "Please login to add to cart"
+    : !user.emailVerifiedAt
+    ? "Please verify your email to add to cart"
+    : !product.canAddToCart
+    ? "Out of stock"
+    : "";
 
   return (
     <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300">
       {/* Product Image */}
       <figure className="relative h-48 overflow-hidden">
         <img
-          src={product.images[0]?.imageUrl || "https://via.placeholder.com/300x200"}
+          src={
+            product.images[0]?.imageUrl || "https://via.placeholder.com/300x200"
+          }
           alt={product.name}
           className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
         />
@@ -104,9 +110,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               {formatPrice(product.price)}
             </span>
           </div>
-          <div className="text-sm text-gray-500">
-            Stock: {product.stock}
-          </div>
+          <div className="text-sm text-gray-500">Stock: {product.stock}</div>
         </div>
 
         {/* Quantity Selector */}
@@ -124,7 +128,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               type="number"
               className="join-item input input-xs w-12 text-center"
               value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+              onChange={(e) =>
+                setQuantity(Math.max(1, parseInt(e.target.value) || 1))
+              }
               min="1"
               max={product.stock}
             />
@@ -137,7 +143,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </button>
           </div>
         </div>
-  {/* Action Buttons */}
+        {/* Action Buttons */}
         <div className="card-actions">
           <button
             className="btn btn-primary btn-sm flex-1"
@@ -203,10 +209,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               "Out of Stock"
             )}
           </button>
-          <button
-            className="btn btn-outline btn-sm"
-            onClick={handleQuickView}
-          >
+          <button className="btn btn-outline btn-sm" onClick={handleQuickView}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-4 w-4"
