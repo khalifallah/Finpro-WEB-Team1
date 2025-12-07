@@ -1,4 +1,9 @@
 const BASE_API_URL =
   process.env.NEXT_PUBLIC_BASE_API_URL || "http://localhost:8000/api";
 
-export { BASE_API_URL };
+// Add these for debugging
+const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
+const FRONTEND_URL =
+  process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
+
+export { BASE_API_URL, IS_DEVELOPMENT, FRONTEND_URL };

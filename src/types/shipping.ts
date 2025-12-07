@@ -1,0 +1,33 @@
+export interface ShippingService {
+  service: string;
+  serviceCode: string;
+  serviceName: string;
+  description: string;
+  cost: number;
+  etd: string;
+  estimatedDays: string;
+  maxDistance?: number;
+}
+
+export interface CheckoutPreview {
+  canCheckout: boolean;
+  addresses: any[];
+  selectedAddress?: any;
+  cartSummary: any[];
+  subtotal: number;
+  totalWeight: number;
+  shippingOptions: ShippingService[];
+  distance?: number;
+  nearestStore?: any;
+  requiresAddress: boolean;
+}
+
+export interface CheckoutValidation {
+  isValid: boolean;
+  userAddress: any;
+  nearestStore: any;
+  shippingCost: number;
+  distance: number;
+  subtotal: number;
+  availableShippingMethods: ShippingService[];
+}

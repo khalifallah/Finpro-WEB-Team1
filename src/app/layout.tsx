@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ToastProvider } from "@/contexts/ToastContext";
 import GoogleOAuthProviderWrapper from "@/providers/GoogleOAuthProvider";
+
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,11 +32,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
-          <GoogleOAuthProviderWrapper>
-            {children}
-          </GoogleOAuthProviderWrapper>
-       </AuthProvider>
+      <ToastProvider>
+          <AuthProvider>
+            <GoogleOAuthProviderWrapper>
+              {children}
+            </GoogleOAuthProviderWrapper>
+          </AuthProvider>
+       </ToastProvider>
         </body>
       </html>
     );
