@@ -7,8 +7,14 @@ import HeroSection from "@/components/HeroSection";
 import ProductList from "@/components/ProductList";
 import Footer from "@/components/Footer";
 import LocationPermissionModal from "@/components/LocationPermissionModal";
+import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 
 export default function Home() {
+  const { showToast } = useToast(); // Add this
+  const { user } = useAuth(); // Add this
+  const { refreshCart } = useCart();
   const [homepageData, setHomepageData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +24,31 @@ export default function Home() {
     longitude: number;
   } | null>(null);
   const [selectedStore, setSelectedStore] = useState<any>(null);
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    fetchHomepageData();
+  }, []);
+
+  useEffect(() => {
+    console.log("FULL HOMEPAGE DATA:", homepageData);
+    // Jika data homepage sudah termuat DAN ada info toko terdekat
+    if (homepageData?.nearestStore) {
+      console.log("KETEMU TOKO:", homepageData.nearestStore); // <--- Cek ini muncul gak?
+      // 1. Set state toko yang dipilih di halaman ini
+      setSelectedStore(homepageData.nearestStore);
+
+      // 2. Simpan ID Toko ke LocalStorage agar CartContext bisa membacanya
+      localStorage.setItem("storeId", String(homepageData.nearestStore.id));
+
+      console.log(
+        "Auto-selected Store ID saved:",
+        homepageData.nearestStore.id
+      );
+    } else {
+      console.log("DATA TOKO TIDAK DITEMUKAN DI RESPONSE");
+    }
+  }, [homepageData]);
 
   // Function to get user's location
   const getUserLocation = () => {
@@ -43,22 +74,100 @@ export default function Home() {
   };
 
   // Function to fetch homepage data
-  const fetchHomepageData = async (lat?: number, lng?: number) => {
+  const fetchHomepageData = async (latitude?: number, longitude?: number) => {
     try {
       setLoading(true);
-      const params: any = { page: 1, limit: 12 };
-      
-      if (lat && lng) {
-        params.lat = lat;
-        params.lng = lng;
+      setError(null);
+
+      console.log("Fetching homepage data...");
+
+      // Build query params if location is provided
+      const params: any = {};
+      if (latitude && longitude) {
+        params.lat = latitude;
+        params.lng = longitude;
       }
 
-      const res = await axiosInstance.get("/homepage", { params });
-      setHomepageData(res.data.data);
-      setSelectedStore(res.data.data.productList.store);
+      // Fetch homepage data directly
+      const response = await axiosInstance.get("/homepage", {
+        params,
+        timeout: 15000,
+      });
+
+      console.log("Homepage data response:", response.data);
+
+      if (response.data.status === 200 || response.data.status === "success") {
+        setHomepageData(response.data.data);
+      } else {
+        throw new Error(
+          response.data.message || "Failed to load homepage data"
+        );
+      }
     } catch (err: any) {
       console.error("Error fetching homepage data:", err);
-      setError(err.message || "Failed to load homepage data");
+
+      // Extract meaningful error message
+      let errorMessage = "Failed to load homepage data";
+
+      if (err.message.includes("timeout")) {
+        errorMessage =
+          "Request timeout. Backend server might be slow or unavailable.";
+      } else if (
+        err.message.includes("Network Error") ||
+        err.message.includes("ECONNREFUSED")
+      ) {
+        errorMessage =
+          "Cannot connect to backend server. Please make sure the backend is running on http://localhost:8000";
+      } else if (err.message.includes("CORS")) {
+        errorMessage = "CORS error. Please check backend CORS configuration.";
+      } else {
+        errorMessage = err.message || "Failed to load homepage data";
+      }
+
+      setError(errorMessage);
+
+      // Fallback data for development
+      setHomepageData({
+        navigation: {
+          categories: [
+            { id: 1, name: "Groceries", productCount: 10 },
+            { id: 2, name: "Beverages", productCount: 8 },
+            { id: 3, name: "Snacks", productCount: 15 },
+          ],
+          featuredLinks: [
+            { name: "Home", url: "/", icon: "home" },
+            { name: "Products", url: "/products", icon: "shopping-bag" },
+            { name: "Categories", url: "/categories", icon: "grid" },
+            { name: "Deals", url: "/deals", icon: "tag" },
+          ],
+        },
+        heroSection: {
+          carousel: [
+            {
+              id: 1,
+              imageUrl:
+                "https://via.placeholder.com/1200x400?text=Welcome+to+Beyond+Market",
+              title: "Welcome to Beyond Market",
+              subtitle: "Your one-stop grocery shop",
+              ctaText: "Shop Now",
+              ctaLink: "/products",
+            },
+          ],
+        },
+        productList: {
+          products: [],
+          pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+        },
+        footer: {
+          copyright: "© 2024 Beyond Market. All rights reserved.",
+          links: [
+            { name: "About Us", url: "/about" },
+            { name: "Contact", url: "/contact" },
+            { name: "Privacy Policy", url: "/privacy" },
+            { name: "Terms of Service", url: "/terms" },
+          ],
+        },
+      });
     } finally {
       setLoading(false);
     }
@@ -68,7 +177,7 @@ export default function Home() {
   useEffect(() => {
     // Check if we have previously stored location
     const storedLocation = localStorage.getItem("userLocation");
-    
+
     if (storedLocation) {
       const location = JSON.parse(storedLocation);
       setUserLocation(location);
@@ -78,7 +187,7 @@ export default function Home() {
       setTimeout(() => {
         setShowLocationModal(true);
       }, 1000);
-      
+
       // If user doesn't give permission, fetch with default store
       fetchHomepageData();
     }
@@ -96,9 +205,14 @@ export default function Home() {
   };
 
   // Handle store change (if user wants to manually select a store)
-  const handleStoreChange = (storeId: number) => {
+  const handleStoreChange = async (storeId: number) => {
     // In a real implementation, you would update the store and refetch products
     console.log("Store changed to:", storeId);
+    localStorage.setItem("storeId", String(storeId));
+    await refreshCart();
+    fetchHomepageData();
+    const newStore = { id: storeId, name: "Store...", address: "..." };
+    setSelectedStore(newStore);
   };
 
   if (loading && !homepageData) {
@@ -128,7 +242,7 @@ export default function Home() {
           </svg>
           <span>Error: {error}</span>
         </div>
-        <button 
+        <button
           className="btn btn-primary mt-4"
           onClick={() => fetchHomepageData()}
         >
@@ -137,6 +251,43 @@ export default function Home() {
       </div>
     );
   }
+
+  // Fix the add to cart function in ProductCard component
+  const handleAddToCart = async (productId: number, quantity: number) => {
+    if (!user) {
+      // Store redirect path and show login prompt
+      localStorage.setItem("redirectAfterLogin", window.location.pathname);
+      window.location.href = "/login";
+      return;
+    }
+
+    if (!user.emailVerifiedAt) {
+      showToast(
+        "Please verify your email before adding items to cart.",
+        "warning"
+      );
+      return;
+    }
+
+    try {
+      const storeId = selectedStore?.id || 1; // Use selected store or default
+      const response = await axiosInstance.post("/cart/items", {
+        productId,
+        quantity,
+        storeId,
+      });
+
+      showToast("Item added to cart successfully!", "success");
+
+      // Refresh cart count
+      await refreshCart();
+    } catch (err: any) {
+      console.error("Add to cart error:", err);
+      const errorMessage =
+        err.response?.data?.message || "Failed to add item to cart";
+      showToast(errorMessage, "error");
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -149,50 +300,49 @@ export default function Home() {
 
       {/* Navigation Bar */}
       <Navbar
-        categories={homepageData?.navigation.categories || []}
-        featuredLinks={homepageData?.navigation.featuredLinks || []}
+        categories={homepageData?.navigation?.categories || []}
+        featuredLinks={homepageData?.navigation?.featuredLinks || []}
         selectedStore={selectedStore}
         onStoreChange={handleStoreChange}
+        onLocationRequest={() => setShowLocationModal(true)}
       />
 
       {/* Main Content */}
       <main className="flex-grow">
         {/* Hero Section */}
-        <HeroSection carousel={homepageData?.heroSection.carousel || []} />
+        <HeroSection carousel={homepageData?.heroSection?.carousel || []} />
 
         {/* Store Information */}
         {selectedStore && (
-          <div className="container mx-auto px-4 py-6">
-            <div className="alert alert-info">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                className="stroke-current shrink-0 w-6 h-6"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                ></path>
-              </svg>
-              <div>
-                <h3 className="font-bold">Shopping from: {selectedStore.name}</h3>
-                <div className="text-xs">
-                  {selectedStore.address}
-                  {selectedStore.distance && (
-                    <span> • {selectedStore.distance.toFixed(1)} km away</span>
-                  )}
-                </div>
+          <div className="alert alert-info mb-4 mx-4">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              className="stroke-current shrink-0 w-6 h-6"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+            <div>
+              <h3 className="font-bold">Shopping from: {selectedStore.name}</h3>
+              <div className="text-xs">
+                {selectedStore.address}
+                {selectedStore.distance && (
+                  <span> • {selectedStore.distance.toFixed(1)} km away</span>
+                )}
               </div>
-              <button
-                className="btn btn-sm btn-outline"
-                onClick={() => setShowLocationModal(true)}
-              >
-                Change Location
-              </button>
             </div>
+            <button
+              className="btn btn-sm btn-outline"
+              onClick={() => setShowLocationModal(true)}
+            >
+              Change Location
+            </button>
           </div>
         )}
 
@@ -201,6 +351,7 @@ export default function Home() {
           products={homepageData?.productList.products || []}
           pagination={homepageData?.productList.pagination}
           loading={loading}
+          onAddToCart={handleAddToCart}
         />
       </main>
 
@@ -208,4 +359,17 @@ export default function Home() {
       <Footer footerData={homepageData?.footer} />
     </div>
   );
+}
+
+async function fetchCartCount() {
+  try {
+    const response = await axiosInstance.get("/cart");
+    // Assuming the API returns cart data with items array
+    const cartItemsCount = response.data?.data?.items?.length || 0;
+    // You might want to update a cart count state or trigger a cart context update
+    // For now, just log it or you could dispatch an event
+    console.log("Cart items count:", cartItemsCount);
+  } catch (err) {
+    console.error("Failed to fetch cart count:", err);
+  }
 }

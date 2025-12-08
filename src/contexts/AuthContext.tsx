@@ -37,6 +37,7 @@ interface AuthContextType {
 interface RegisterData {
   fullName: string;
   email: string;
+  role?: string; // Add this
   referredBy?: string;
 }
 
@@ -162,16 +163,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Function to handle registration
-  const register = async (data: RegisterData) => {
-    try {
-      const response = await axiosInstance.post("/auth/register", data);
-      // Registration successful, email verification sent
-      router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
-    } catch (error) {
-      console.error("Registration failed:", error);
-      throw error;
-    }
-  };
+const register = async (data: RegisterData) => {
+  try {
+    const response = await axiosInstance.post("/auth/register", data);
+    // Registration successful, email verification sent
+    router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+  } catch (error) {
+    console.error("Registration failed:", error);
+    throw error;
+  }
+};
 
   // Function to check if user is authenticated
   const isAuthenticated = !!user;
