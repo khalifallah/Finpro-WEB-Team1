@@ -253,7 +253,7 @@ export default function Home() {
   }
 
   // Fix the add to cart function in ProductCard component
-  const handleAddToCart = async (productId: number, quantity: number) => {
+  const handleAddToCart = async (product: any) => {
     if (!user) {
       // Store redirect path and show login prompt
       localStorage.setItem("redirectAfterLogin", window.location.pathname);
@@ -272,8 +272,8 @@ export default function Home() {
     try {
       const storeId = selectedStore?.id || 1; // Use selected store or default
       const response = await axiosInstance.post("/cart/items", {
-        productId,
-        quantity,
+        productId: product.id,
+        quantity: 1,
         storeId,
       });
 
