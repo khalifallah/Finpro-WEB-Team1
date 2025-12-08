@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { axiosInstance } from "@/libs/axios/axios.config";
-import { 
-  FaShoppingCart, 
-  FaUser, 
-  FaStore, 
-  FaMapMarkerAlt, 
+import {
+  FaShoppingCart,
+  FaUser,
+  FaStore,
+  FaMapMarkerAlt,
   FaChevronDown,
   FaChevronUp,
   FaBars,
@@ -15,8 +15,9 @@ import {
   FaPhone,
   FaClock,
   FaMotorcycle,
-  FaStar
+  FaStar,
 } from "react-icons/fa";
+import { useCart } from "@/contexts/CartContext";
 
 interface Category {
   id: number;
@@ -60,16 +61,12 @@ const Navbar: React.FC<NavbarProps> = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isStoreMenuOpen, setIsStoreMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
-  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const { user, logout, isLoading } = useAuth();
-
-  // Fetch cart count when user is logged in
-  useEffect(() => {
-    if (user) {
-      fetchCartCount();
-    }
-  }, [user]);
+  const { cartCount } = useCart();
 
   // Try to get user location on component mount
   useEffect(() => {
@@ -79,22 +76,7 @@ const Navbar: React.FC<NavbarProps> = ({
     }
   }, []);
 
-  const fetchCartCount = async () => {
-    try {
-      const response = await axiosInstance.get("/auth/cart/summary");
-      const cartSummary = response.data.data;
-      if (cartSummary && !cartSummary.isEmpty) {
-        setCartCount(cartSummary.totalItems || 0);
-      } else {
-        setCartCount(0);
-      }
-    } catch (error) {
-      console.error("Error fetching cart count:", error);
-      setCartCount(0);
-    }
-  };
-
-   // Store info card component
+  // Store info card component
   const StoreInfoCard = () => (
     <div className="bg-gradient-to-r from-primary/10 to-secondary/5 rounded-xl p-3 md:p-4 border border-primary/20">
       <div className="flex items-start justify-between">
@@ -105,12 +87,16 @@ const Navbar: React.FC<NavbarProps> = ({
               {selectedStore?.name || "Select a Store"}
             </h3>
             {selectedStore?.isOpen !== undefined && (
-              <span className={`badge badge-sm ${selectedStore.isOpen ? 'badge-success' : 'badge-error'}`}>
-                {selectedStore.isOpen ? 'Open' : 'Closed'}
+              <span
+                className={`badge badge-sm ${
+                  selectedStore.isOpen ? "badge-success" : "badge-error"
+                }`}
+              >
+                {selectedStore.isOpen ? "Open" : "Closed"}
               </span>
             )}
           </div>
-          
+
           {selectedStore?.address && (
             <div className="flex items-start gap-2 mb-2">
               <FaMapMarkerAlt className="text-gray-500 mt-1 flex-shrink-0 text-xs md:text-sm" />
@@ -129,7 +115,7 @@ const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-xs text-gray-500">away</span>
               </div>
             )}
-            
+
             {selectedStore?.deliveryTime && (
               <div className="flex items-center gap-1">
                 <FaMotorcycle className="text-success text-xs" />
@@ -138,7 +124,7 @@ const Navbar: React.FC<NavbarProps> = ({
                 </span>
               </div>
             )}
-            
+
             {selectedStore?.rating && (
               <div className="flex items-center gap-1">
                 <FaStar className="text-yellow-500 text-xs" />
@@ -181,11 +167,11 @@ const Navbar: React.FC<NavbarProps> = ({
           {isStoreMenuOpen ? <FaChevronUp /> : <FaChevronDown />}
         </button>
       </div>
-      
+
       {isStoreMenuOpen && (
         <div className="p-4 bg-base-100 border-b">
           <StoreInfoCard />
-          
+
           <div className="mt-4 space-y-2">
             <button
               onClick={onLocationRequest}
@@ -194,7 +180,7 @@ const Navbar: React.FC<NavbarProps> = ({
               <FaMapMarkerAlt className="mr-2" />
               Use My Location
             </button>
-            
+
             <button
               onClick={() => {
                 // In a real app, this would open a store list
@@ -209,22 +195,22 @@ const Navbar: React.FC<NavbarProps> = ({
       )}
     </div>
   );
-  
+
   function getIcon(icon: string | undefined): React.ReactNode {
     if (!icon) return null;
-    
+
     const iconMap: { [key: string]: React.ReactNode } = {
-      'shopping-cart': <FaShoppingCart className="mr-2" />,
-      'user': <FaUser className="mr-2" />,
-      'store': <FaStore className="mr-2" />,
-      'location': <FaMapMarkerAlt className="mr-2" />,
-      'phone': <FaPhone className="mr-2" />,
-      'clock': <FaClock className="mr-2" />,
-      'motorcycle': <FaMotorcycle className="mr-2" />,
-      'star': <FaStar className="mr-2" />,
-      'search': <FaSearch className="mr-2" />,
+      "shopping-cart": <FaShoppingCart className="mr-2" />,
+      user: <FaUser className="mr-2" />,
+      store: <FaStore className="mr-2" />,
+      location: <FaMapMarkerAlt className="mr-2" />,
+      phone: <FaPhone className="mr-2" />,
+      clock: <FaClock className="mr-2" />,
+      motorcycle: <FaMotorcycle className="mr-2" />,
+      star: <FaStar className="mr-2" />,
+      search: <FaSearch className="mr-2" />,
     };
-    
+
     return iconMap[icon.toLowerCase()] || null;
   }
 
@@ -244,7 +230,7 @@ const Navbar: React.FC<NavbarProps> = ({
               >
                 {isMenuOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
               </button>
-              
+
               <Link href="/" className="flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <img
@@ -286,7 +272,7 @@ const Navbar: React.FC<NavbarProps> = ({
               <Link href="/cart" className="btn btn-ghost btn-square relative">
                 <FaShoppingCart size={20} />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 badge badge-primary badge-sm min-w-[1.25rem]">
+                  <span className="absolute -top-2 -right-2 badge badge-primary badge-xs">
                     {cartCount}
                   </span>
                 )}
@@ -317,9 +303,15 @@ const Navbar: React.FC<NavbarProps> = ({
                       <p className="font-bold">{user.fullName}</p>
                       <p className="text-xs text-gray-500">{user.email}</p>
                     </li>
-                    <li><Link href="/profile">My Profile</Link></li>
-                    <li><Link href="/orders">My Orders</Link></li>
-                    <li><Link href="/wishlist">Wishlist</Link></li>
+                    <li>
+                      <Link href="/profile">My Profile</Link>
+                    </li>
+                    <li>
+                      <Link href="/orders">My Orders</Link>
+                    </li>
+                    <li>
+                      <Link href="/wishlist">Wishlist</Link>
+                    </li>
                     <div className="divider my-1"></div>
                     <li>
                       <button onClick={logout} className="text-error">
@@ -359,7 +351,7 @@ const Navbar: React.FC<NavbarProps> = ({
               <div className="w-1/2">
                 <StoreInfoCard />
               </div>
-              
+
               {/* Store Actions */}
               <div className="flex items-center gap-4">
                 {selectedStore?.phone && (
@@ -371,7 +363,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     Call Store
                   </a>
                 )}
-                
+
                 {selectedStore?.hours && (
                   <div className="flex items-center gap-1 text-sm">
                     <FaClock className="text-gray-500" />
@@ -442,11 +434,11 @@ const Navbar: React.FC<NavbarProps> = ({
       {isMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           {/* Backdrop */}
-          <div 
+          <div
             className="absolute inset-0 bg-black/50"
             onClick={() => setIsMenuOpen(false)}
           />
-          
+
           {/* Menu Panel */}
           <div className="absolute left-0 top-0 h-full w-80 bg-base-100 shadow-xl">
             <div className="p-4 border-b">
@@ -459,7 +451,7 @@ const Navbar: React.FC<NavbarProps> = ({
                   <FaTimes />
                 </button>
               </div>
-              
+
               {/* User Info in Mobile Menu */}
               {user && (
                 <div className="mt-4 p-3 bg-base-200 rounded-lg">
@@ -490,7 +482,7 @@ const Navbar: React.FC<NavbarProps> = ({
                 <li className="menu-title">Shopping</li>
                 {featuredLinks.map((link) => (
                   <li key={link.name}>
-                    <Link 
+                    <Link
                       href={link.url}
                       onClick={() => setIsMenuOpen(false)}
                       className="py-3"
@@ -499,9 +491,9 @@ const Navbar: React.FC<NavbarProps> = ({
                     </Link>
                   </li>
                 ))}
-                
+
                 <div className="divider"></div>
-                
+
                 <li className="menu-title">Categories</li>
                 {categories.map((category) => (
                   <li key={category.id}>
@@ -517,12 +509,12 @@ const Navbar: React.FC<NavbarProps> = ({
                     </Link>
                   </li>
                 ))}
-                
+
                 {!user && (
                   <>
                     <div className="divider"></div>
                     <li>
-                      <Link 
+                      <Link
                         href="/login"
                         onClick={() => setIsMenuOpen(false)}
                         className="btn btn-primary"
