@@ -10,7 +10,7 @@
 	"dependencies": {
 		"@react-oauth/google": "^0.12.2",
 		"axios": "^1.11.0",
-		"cookies-next": "^6.1.0",
+		"cookies-next": "^6.1.1",
 		"formik": "^2.4.6",
 		"jwt-decode": "^3.1.2",
 		"next": "15.5.4",

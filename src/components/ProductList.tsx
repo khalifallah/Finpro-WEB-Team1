@@ -75,17 +75,14 @@ const ProductList: React.FC<ProductListProps> = ({
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+        <div className="w-full sm:w-auto">
           <h2 className="text-3xl font-bold">Featured Products</h2>
-          <p className="text-gray-500">
-            Available at your nearest store
-          </p>
+          <p className="text-gray-500">Available at your nearest store</p>
         </div>
-        <div className="flex gap-2">
-          <select className="select select-bordered">
+        <div className="w-full sm:w-auto">
+          <select className="select select-bordered w-full sm:w-auto cursor-pointer lg:min-w-[200px]">
             <option>Sort by: Featured</option>
             <option>Price: Low to High</option>
             <option>Price: High to Low</option>

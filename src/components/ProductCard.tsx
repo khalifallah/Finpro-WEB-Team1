@@ -88,9 +88,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               {formatPrice(product.price)}
             </span>
           </div>
-          <div className="text-sm text-gray-500">
-            Stock: {product.stock}
-          </div>
+          <div className="text-sm text-gray-500">Stock: {product.stock}</div>
         </div>
 
         {/* Quantity Selector */}
@@ -108,7 +106,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
               type="number"
               className="join-item input input-xs w-12 text-center"
               value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+              onChange={(e) =>
+                setQuantity(Math.max(1, parseInt(e.target.value) || 1))
+              }
               min="1"
               max={product.stock}
             />
@@ -121,7 +121,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             </button>
           </div>
         </div>
-  {/* Action Buttons */}
+        {/* Action Buttons */}
         <div className="card-actions">
           <button
             className="btn btn-primary btn-sm flex-1"
@@ -152,10 +152,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               "Add to Cart"
             )}
           </button>
-          <button
-            className="btn btn-outline btn-sm"
-            onClick={handleQuickView}
-          >
+          <button className="btn btn-outline btn-sm" onClick={handleQuickView}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-4 w-4"

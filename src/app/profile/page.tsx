@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import AuthGuard from "@/components/AuthGuard";
 import { axiosInstance } from "@/libs/axios/axios.config";
-import Image from "next/image";
+import AddressList from "@/components/AddressList";
+import { UserAddress } from "@/types/address";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function ProfilePage() {
@@ -21,9 +22,44 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [addresses, setAddresses] = useState<UserAddress[]>([]);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [addressError, setAddressError] = useState("");
+
+  useEffect(() => {
+    console.log("Addresses state:", addresses);
+    console.log("Addresses type:", typeof addresses);
+  }, [addresses]);
+
+  const fetchAddresses = async () => {
+    try {
+      setAddressLoading(true);
+      setAddressError("");
+      const response = await axiosInstance.get("/auth/profile/addresses");
+      console.log("API Response:", response.data);
+      console.log("Data structure:", response.data.data);
+      const addressesArray = response.data.data || [];
+      if (Array.isArray(addressesArray)) {
+        setAddresses(addressesArray);
+      } else {
+        console.error("Unexpected response format:", response.data);
+        setAddresses([]);
+        setAddressError("Invalid address data format");
+      }
+    } catch (err: any) {
+      console.error("Error fetching addresses:", err);
+      setAddressError(
+        err.response?.data?.message || "Failed to load addresses"
+      );
+      setAddresses([]);
+    } finally {
+      setAddressLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
+      fetchAddresses();
       setFormData({
         fullName: user.fullName,
         email: user.email,
@@ -57,7 +93,6 @@ export default function ProfilePage() {
         setError("Invalid file type. Only JPG, PNG, and GIF are allowed.");
         return;
       }
-
       // Validate file size (max 1MB)
       if (file.size > 1024 * 1024) {
         setError("File size must be less than 1MB.");
@@ -81,41 +116,33 @@ export default function ProfilePage() {
         setError("New passwords do not match");
         return;
       }
-
       if (formData.newPassword.length < 8) {
         setError("New password must be at least 8 characters");
         return;
       }
-
       if (!formData.currentPassword) {
         setError("Current password is required to change password");
         return;
       }
     }
-
     setIsLoading(true);
 
     try {
       const formDataToSend = new FormData();
       formDataToSend.append("fullName", formData.fullName);
-
       // Only append email if it's changed
       if (formData.email !== user?.email) {
         formDataToSend.append("email", formData.email);
       }
-
       if (formData.currentPassword) {
         formDataToSend.append("currentPassword", formData.currentPassword);
       }
-
       if (formData.newPassword) {
         formDataToSend.append("newPassword", formData.newPassword);
       }
-
       if (photo) {
         formDataToSend.append("photo", photo);
       }
-
       const response = await axiosInstance.patch(
         "/auth/profile",
         formDataToSend,
@@ -150,14 +177,11 @@ export default function ProfilePage() {
     try {
       await axiosInstance.post("/auth/profile/request-verification");
       setMessage("Verification email sent successfully");
-
       // Force refresh user data from backend
       const response = await axiosInstance.get("/auth/me");
       const updatedUser = response.data.data.user;
-
       // Update the auth context
       setUser(updatedUser);
-
       // Update localStorage
       const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
       localStorage.setItem(
@@ -171,7 +195,6 @@ export default function ProfilePage() {
       // If error is "Email is already verified", update the UI anyway
       if (err.response?.data?.message?.includes("already verified")) {
         setMessage("Email is already verified. Updating your status...");
-
         // Force update the user as verified
         if (user) {
           const updatedUser = {
@@ -179,10 +202,8 @@ export default function ProfilePage() {
             emailVerifiedAt: new Date().toISOString(),
           };
           setUser(updatedUser);
-
           // Update localStorage
           localStorage.setItem("user", JSON.stringify(updatedUser));
-
           // Refresh the page to show updated status
           setTimeout(() => {
             window.location.reload();
@@ -201,7 +222,6 @@ export default function ProfilePage() {
     new: false,
     confirm: false,
   });
-
   const togglePasswordVisibility = (field: "current" | "new" | "confirm") => {
     setShowPassword((prev) => ({
       ...prev,
@@ -537,6 +557,55 @@ export default function ProfilePage() {
                     </span>
                   </div>
                 </div>
+              </div>
+            </div>
+            <div className="card bg-base-100 shadow-xl mt-6">
+              <div className="card-body">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="card-title">Shipping Addresses</h2>
+                  <button
+                    className="btn btn-sm btn-primary"
+                    onClick={fetchAddresses}
+                    disabled={addressLoading}
+                  >
+                    {addressLoading ? (
+                      <span className="loading loading-spinner loading-xs"></span>
+                    ) : (
+                      "Refresh"
+                    )}
+                  </button>
+                </div>
+
+                {addressError && (
+                  <div className="alert alert-error mb-4">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="stroke-current shrink-0 h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <span>{addressError}</span>
+                  </div>
+                )}
+
+                {addressLoading ? (
+                  <div className="text-center py-8">
+                    <span className="loading loading-spinner"></span>
+                    <p className="mt-2">Loading addresses...</p>
+                  </div>
+                ) : (
+                  <AddressList
+                    addresses={addresses}
+                    onAddressUpdate={fetchAddresses}
+                  />
+                )}
               </div>
             </div>
           </div>
