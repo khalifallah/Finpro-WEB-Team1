@@ -1,25 +1,9 @@
 import React from "react";
 import ProductCard from "./ProductCard";
-import Link from "next/link";
+import { ProductResponse } from '@/types/product.types'; // ← TAMBAH (1)
+import Pagination from "./common/Pagination" // ← TAMBAH (2)
 
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  category: {
-    id: number;
-    name: string;
-  };
-  images: Array<{
-    id: number;
-    imageUrl: string;
-  }>;
-  canAddToCart: boolean;
-}
-
-interface Pagination {
+interface PaginationData {
   page: number;
   limit: number;
   total: number;
@@ -27,17 +11,21 @@ interface Pagination {
 }
 
 interface ProductListProps {
-  products: Product[];
-  pagination?: Pagination;
+  products: ProductResponse[]; // ← UPDATE (3)
+  pagination?: PaginationData;
   loading: boolean;
-  onAddToCart?: (productId: number, quantity: number) => void; // Add this
+  onProductClick?: (product: ProductResponse) => void; // ← TAMBAH (4)
+  onAddToCart?: (product: ProductResponse) => void; // ← TAMBAH (4)
 }
+
+// ❌ HAPUS interface Product lama
 
 const ProductList: React.FC<ProductListProps> = ({
   products,
   pagination,
   loading,
-  onAddToCart, // Add this
+  onProductClick,
+  onAddToCart,
 }) => {
   if (loading && products.length === 0) {
     return (
@@ -109,29 +97,22 @@ const ProductList: React.FC<ProductListProps> = ({
           <ProductCard 
             key={product.id} 
             product={product}
-            onAddToCart={onAddToCart} // Pass the prop
+            onViewDetails={() => onProductClick?.(product)} // ← TAMBAH (5)
+            onAddToCart={() => onAddToCart?.(product)} // ← TAMBAH (5)
           />
         ))}
       </div>
 
-      {/* Pagination */}
+      {/* Pagination - UPDATE: Gunakan component baru */}
       {pagination && pagination.totalPages > 1 && (
-        <div className="flex justify-center mt-12">
-          <div className="join">
-            <button className="join-item btn">«</button>
-            {[...Array(pagination.totalPages)].map((_, i) => (
-              <button
-                key={i}
-                className={`join-item btn ${
-                  i + 1 === pagination.page ? "btn-active" : ""
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-            <button className="join-item btn">»</button>
-          </div>
-        </div>
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={(page) => {
+            console.log('Change to page:', page);
+            // Implement page change logic here
+          }}
+        />
       )}
     </div>
   );
