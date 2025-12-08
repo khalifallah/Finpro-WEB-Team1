@@ -49,16 +49,51 @@ export default function ProductPage() {
         search: search || undefined,
       });
 
-      // Direct access to typed response
-      setProducts(response.data.products);
-      setPagination({
-        page: response.pagination.page,
-        limit: response.pagination.limit,
-        total: response.pagination.total,
-        totalPages: response.pagination.totalPages,
-      });
+      console.log('Fetch response:', response); // Debug log
+
+      // ✅ FIX: Handle berbagai struktur response
+      let productsData: ProductResponse[] = [];
+      let paginationData = {
+        page,
+        limit: pagination.limit,
+        total: 0,
+        totalPages: 0,
+      };
+
+      // Jika response adalah object dengan products array
+      if (response?.products && Array.isArray(response.products)) {
+        productsData = response.products;
+        paginationData = {
+          page: response.pagination?.page || page,
+          limit: response.pagination?.limit || pagination.limit,
+          total: response.pagination?.total || response.products.length,
+          totalPages: response.pagination?.totalPages || 1,
+        };
+      } 
+      // Jika response langsung adalah array
+      else if (Array.isArray(response)) {
+        productsData = response;
+        paginationData.total = response.length;
+        paginationData.totalPages = 1;
+      }
+      // Jika response adalah object tapi bukan products
+      else if (typeof response === 'object' && response !== null) {
+        productsData = response.data || [];
+        paginationData = {
+          page: response.pagination?.page || page,
+          limit: response.pagination?.limit || pagination.limit,
+          total: response.pagination?.total || productsData.length,
+          totalPages: response.pagination?.totalPages || 1,
+        };
+      }
+
+      setProducts(productsData);
+      setPagination(paginationData);
+
+      console.log('Parsed products:', productsData); // Debug log
     } catch (error) {
       console.error('Failed to fetch products:', error);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
