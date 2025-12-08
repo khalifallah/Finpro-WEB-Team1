@@ -1,18 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Table from '@/components/common/Table';
 import SearchBar from '@/components/common/SearchBar';
 import Pagination from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import Modal from '@/components/common/Modal';
+import CategoryList from '@/components/admin/CategoryList'; // ← IMPORT COMPONENT BARU
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Category {
   id: number;
   name: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 export default function CategoriesPage() {
@@ -45,41 +45,69 @@ export default function CategoriesPage() {
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
 
-  // Fetch categories
+  const getApiUrl = () => {
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  };
+
   const fetchCategories = async (page: number = 1, search: string = '') => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
+      const apiUrl = getApiUrl();
+
       const params = new URLSearchParams({
         page: String(page),
         limit: String(pagination.limit),
       });
       if (search) params.append('search', search);
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/categories?${params}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await fetch(`${apiUrl}/categories?${params}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch');
+
       const data = await response.json();
 
-      setCategories(data.categories || []);
-      setPagination({
-        page: data.page || page,
-        limit: data.limit || 10,
-        total: data.total || 0,
-        totalPages: Math.ceil((data.total || 0) / (data.limit || 10)),
-      });
+      let categoriesData: Category[] = [];
+      let paginationData = { page, limit: pagination.limit, total: 0, totalPages: 0 };
+
+      if (Array.isArray(data)) {
+        categoriesData = data;
+        paginationData = { page, limit: pagination.limit, total: data.length, totalPages: 1 };
+      } else if (data?.data && Array.isArray(data.data)) {
+        categoriesData = data.data;
+        paginationData = {
+          page: data.pagination?.page || page,
+          limit: data.pagination?.limit || pagination.limit,
+          total: data.pagination?.total || data.data.length,
+          totalPages: data.pagination?.totalPages || 1,
+        };
+      } else if (data?.categories && Array.isArray(data.categories)) {
+        categoriesData = data.categories;
+        paginationData = {
+          page,
+          limit: pagination.limit,
+          total: data.total || categoriesData.length,
+          totalPages: Math.ceil((data.total || 0) / pagination.limit),
+        };
+      }
+
+      setCategories(categoriesData);
+      setPagination(paginationData);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCategories(1, '');
+    fetchCategories();
   }, []);
 
   const handleSearch = (query: string) => {
@@ -108,9 +136,11 @@ export default function CategoriesPage() {
     try {
       setFormLoading(true);
       const token = localStorage.getItem('token');
+      const apiUrl = getApiUrl();
+
       const url = formModal.mode === 'create'
-        ? `${process.env.NEXT_PUBLIC_API_URL}/categories`
-        : `${process.env.NEXT_PUBLIC_API_URL}/categories/${formModal.category?.id}`;
+        ? `${apiUrl}/categories`
+        : `${apiUrl}/categories/${formModal.category?.id}`;
 
       const response = await fetch(url, {
         method: formModal.mode === 'create' ? 'POST' : 'PUT',
@@ -139,18 +169,14 @@ export default function CategoriesPage() {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
+      const apiUrl = getApiUrl();
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/categories/${categoryId}`,
-        {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await fetch(`${apiUrl}/categories/${categoryId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (!response.ok) {
-        throw new Error('Failed to delete category');
-      }
+      if (!response.ok) throw new Error('Failed to delete category');
 
       fetchCategories(pagination.page, searchQuery);
       setDeleteConfirm({ isOpen: false });
@@ -161,70 +187,14 @@ export default function CategoriesPage() {
     }
   };
 
-  const columns = [
-    {
-      key: 'id',
-      header: 'ID',
-      render: (value: number) => <span className="font-mono text-xs">#{value}</span>,
-      className: 'w-16',
-    },
-    {
-      key: 'name',
-      header: 'Category Name',
-      render: (value: string) => <span className="font-semibold">{value}</span>,
-    },
-    {
-      key: 'createdAt',
-      header: 'Created',
-      render: (value: string) => new Date(value).toLocaleDateString('id-ID'),
-    },
-    {
-      key: 'id',
-      header: 'Actions',
-      render: (value: number, item: Category) => (
-        <div className="flex gap-2 justify-end">
-          {isSuperAdmin ? (
-            <>
-              <button
-                onClick={() => handleEdit(item)}
-                className="btn btn-sm btn-primary"
-                title="Edit"
-              >
-                ✏️
-              </button>
-              <button
-                onClick={() =>
-                  setDeleteConfirm({
-                    isOpen: true,
-                    categoryId: value,
-                    categoryName: item.name,
-                  })
-                }
-                className="btn btn-sm btn-error"
-                title="Delete"
-              >
-                🗑️
-              </button>
-            </>
-          ) : (
-            <span className="badge badge-ghost text-xs">Read Only</span>
-          )}
-        </div>
-      ),
-      className: 'text-right',
-    },
-  ];
-
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Header */}
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Categories</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Categories</h1>
           <p className="text-gray-600 mt-1">
-            {isSuperAdmin
-              ? 'Manage product categories'
-              : 'View product categories (Read Only)'}
+            {isSuperAdmin ? 'Manage product categories' : 'View categories (Read Only)'}
           </p>
         </div>
         {isSuperAdmin && (
@@ -237,18 +207,14 @@ export default function CategoriesPage() {
         )}
       </div>
 
-      {/* Store Admin Notice */}
       {!isSuperAdmin && (
         <div className="alert alert-info">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>Store Admin can only view categories. Contact Super Admin for changes.</span>
+          <span>Store Admin can only view. Contact Super Admin for changes.</span>
         </div>
       )}
 
       {/* Search */}
-      <div className="bg-white p-4 rounded-lg shadow">
+      <div className="bg-gray-100 p-4 rounded-lg shadow-sm border border-gray-300">
         <SearchBar
           value={searchQuery}
           onChange={handleSearch}
@@ -256,17 +222,20 @@ export default function CategoriesPage() {
         />
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <Table
-          columns={columns}
-          data={categories}
+      {/* Table - Menggunakan CategoryList Component */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <CategoryList
+          categories={categories}
           loading={loading}
-          emptyMessage="No categories found"
+          isSuperAdmin={isSuperAdmin}
+          onEdit={handleEdit}
+          onDelete={(id, name) =>
+            setDeleteConfirm({ isOpen: true, categoryId: id, categoryName: name })
+          }
         />
 
         {pagination.totalPages > 1 && (
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-gray-200 bg-gray-50">
             <Pagination
               currentPage={pagination.page}
               totalPages={pagination.totalPages}
@@ -276,39 +245,97 @@ export default function CategoriesPage() {
         )}
       </div>
 
-      {/* Create/Edit Modal */}
+      {/* Modal */}
       <Modal
         isOpen={formModal.isOpen}
         onClose={() => setFormModal({ isOpen: false, mode: 'create' })}
-        title={formModal.mode === 'create' ? 'Create Category' : 'Edit Category'}
+        title={`${formModal.mode === 'create' ? '➕ Create' : '✏️ Edit'} Category`}
+        size="md"
       >
-        <div className="space-y-4">
+        <div className="space-y-5">
+          {/* Error Alert */}
           {formError && (
-            <div className="alert alert-error">
-              <span>{formError}</span>
+            <div className="alert alert-error gap-3 rounded-lg">
+              <svg
+                className="stroke-current shrink-0 h-6 w-6"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 9v2m0 4v2m0 0v2m0-6v-2m0 0V7a2 2 0 012-2h.5a.5.5 0 00-.5.5v.5H9.5a.5.5 0 00-.5.5v.5a2 2 0 014 0m0 0a2 2 0 11-4 0m0 0V7a2 2 0 012-2z"
+                />
+              </svg>
+              <span className="text-sm font-medium">{formError}</span>
             </div>
           )}
+
+          {/* Form Control */}
           <div className="form-control">
-            <label className="label">
-              <span className="label-text font-semibold">Category Name</span>
+            <label className="label pb-2">
+              <span className="label-text font-semibold text-gray-900 text-base">
+                Category Name
+              </span>
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ name: e.target.value })}
-              className="input input-bordered"
-              placeholder="Enter category name"
+              onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
+              placeholder="Enter category name (e.g., Groceries, Electronics)"
+              className="input input-bordered input-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-0"
+              autoFocus
+              disabled={formLoading}
             />
+            {formData.name && (
+              <label className="label pt-2">
+                <span className="label-text-alt text-xs text-gray-500">
+                  ✓ {formData.name.length} characters
+                </span>
+              </label>
+            )}
           </div>
-          <div className="flex gap-2 justify-end mt-6">
+
+          {/* Form Actions */}
+          <div className="flex gap-3 justify-end pt-6 border-t border-gray-200">
             <button
               onClick={() => setFormModal({ isOpen: false, mode: 'create' })}
-              className="btn btn-ghost"
+              className="btn btn-ghost btn-md min-w-24"
+              disabled={formLoading}
             >
               Cancel
             </button>
-            <button onClick={handleSubmit} className="btn btn-primary" disabled={formLoading}>
-              {formLoading ? 'Saving...' : 'Save'}
+            <button
+              onClick={handleSubmit}
+              className="btn btn-primary btn-md min-w-24 gap-2"
+              disabled={formLoading || !formData.name.trim()}
+            >
+              {formLoading ? (
+                <>
+                  <span className="loading loading-spinner loading-sm"></span>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  Save
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -318,9 +345,11 @@ export default function CategoriesPage() {
       <ConfirmDialog
         isOpen={deleteConfirm.isOpen}
         onClose={() => setDeleteConfirm({ isOpen: false })}
-        onConfirm={() => deleteConfirm.categoryId && handleDelete(deleteConfirm.categoryId)}
+        onConfirm={() =>
+          deleteConfirm.categoryId && handleDelete(deleteConfirm.categoryId)
+        }
         title="Delete Category"
-        message={`Are you sure you want to delete "${deleteConfirm.categoryName}"? This action cannot be undone.`}
+        message={`Delete "${deleteConfirm.categoryName}"?`}
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
