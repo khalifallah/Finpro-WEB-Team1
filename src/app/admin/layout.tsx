@@ -91,7 +91,7 @@ export default function AdminLayout({
             <div className="dropdown dropdown-end">
               <label tabIndex={0} className="btn btn-ghost btn-circle avatar cursor-pointer">
                 <div className="w-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg">
-                  {/* ✅ PATCHED: Default admin initial */}
+                  {/* PATCHED: Default admin initial */}
                   {getUserInitial()}
                 </div>
               </label>
@@ -99,7 +99,7 @@ export default function AdminLayout({
                 tabIndex={0}
                 className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52"
               >
-                {/* ✅ PATCHED: Default admin email */}
+                {/* PATCHED: Default admin email */}
                 <li>
                   <a className="pointer-events-none text-xs py-2">
                     {getUserEmail()}
