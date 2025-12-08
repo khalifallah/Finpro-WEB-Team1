@@ -9,10 +9,12 @@ import Footer from "@/components/Footer";
 import LocationPermissionModal from "@/components/LocationPermissionModal";
 import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 
 export default function Home() {
   const { showToast } = useToast(); // Add this
   const { user } = useAuth(); // Add this
+  const { refreshCart } = useCart();
   const [homepageData, setHomepageData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +29,26 @@ export default function Home() {
   useEffect(() => {
     fetchHomepageData();
   }, []);
+
+  useEffect(() => {
+    console.log("FULL HOMEPAGE DATA:", homepageData);
+    // Jika data homepage sudah termuat DAN ada info toko terdekat
+    if (homepageData?.nearestStore) {
+      console.log("KETEMU TOKO:", homepageData.nearestStore); // <--- Cek ini muncul gak?
+      // 1. Set state toko yang dipilih di halaman ini
+      setSelectedStore(homepageData.nearestStore);
+
+      // 2. Simpan ID Toko ke LocalStorage agar CartContext bisa membacanya
+      localStorage.setItem("storeId", String(homepageData.nearestStore.id));
+
+      console.log(
+        "Auto-selected Store ID saved:",
+        homepageData.nearestStore.id
+      );
+    } else {
+      console.log("DATA TOKO TIDAK DITEMUKAN DI RESPONSE");
+    }
+  }, [homepageData]);
 
   // Function to get user's location
   const getUserLocation = () => {
@@ -183,9 +205,14 @@ export default function Home() {
   };
 
   // Handle store change (if user wants to manually select a store)
-  const handleStoreChange = (storeId: number) => {
+  const handleStoreChange = async (storeId: number) => {
     // In a real implementation, you would update the store and refetch products
     console.log("Store changed to:", storeId);
+    localStorage.setItem("storeId", String(storeId));
+    await refreshCart();
+    fetchHomepageData();
+    const newStore = { id: storeId, name: "Store...", address: "..." };
+    setSelectedStore(newStore);
   };
 
   if (loading && !homepageData) {
@@ -253,7 +280,7 @@ export default function Home() {
       showToast("Item added to cart successfully!", "success");
 
       // Refresh cart count
-      fetchCartCount();
+      await refreshCart();
     } catch (err: any) {
       console.error("Add to cart error:", err);
       const errorMessage =
@@ -276,10 +303,7 @@ export default function Home() {
         categories={homepageData?.navigation?.categories || []}
         featuredLinks={homepageData?.navigation?.featuredLinks || []}
         selectedStore={selectedStore}
-        onStoreChange={(storeId) => {
-          // Handle store change logic
-          console.log("Store changed to:", storeId);
-        }}
+        onStoreChange={handleStoreChange}
         onLocationRequest={() => setShowLocationModal(true)}
       />
 

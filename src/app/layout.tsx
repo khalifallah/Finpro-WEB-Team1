@@ -4,8 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import GoogleOAuthProviderWrapper from "@/providers/GoogleOAuthProvider";
-
-
+import { CartProvider } from "@/contexts/CartContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,14 +31,16 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-      <ToastProvider>
+        <ToastProvider>
           <AuthProvider>
-            <GoogleOAuthProviderWrapper>
-              {children}
-            </GoogleOAuthProviderWrapper>
+            <CartProvider>
+              <GoogleOAuthProviderWrapper>
+                {children}
+              </GoogleOAuthProviderWrapper>
+            </CartProvider>
           </AuthProvider>
-       </ToastProvider>
-        </body>
-      </html>
-    );
-  }
+        </ToastProvider>
+      </body>
+    </html>
+  );
+}
