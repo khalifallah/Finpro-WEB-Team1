@@ -63,6 +63,25 @@ export const productService = {
     }
   },
 
+  // Get categories
+  getCategories: async () => {
+    try {
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/categories`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories');
+      }
+
+      return response.json();
+    } catch (error: any) {
+      console.error('Get categories error:', error);
+      throw new Error(error.message || 'Failed to fetch categories');
+    }
+  },
+
   // Create product
   createProduct: async (formData: FormData) => {
     try {
@@ -73,7 +92,6 @@ export const productService = {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
-          // Note: Don't set Content-Type for FormData, browser will set it automatically
         },
         body: formData,
       });
@@ -91,13 +109,23 @@ export const productService = {
   },
 
   // Update product
-  updateProduct: async (id: number, data: any) => {
+  updateProduct: async (id: number, data: FormData | Record<string, any>) => {
     try {
       const apiUrl = getApiUrl();
+      const token = localStorage.getItem('token');
+
+      // Check if data is FormData (has images) or plain object
+      const isFormData = data instanceof FormData;
+
       const response = await fetch(`${apiUrl}/products/${id}`, {
         method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(data),
+        headers: isFormData
+          ? { Authorization: `Bearer ${token}` }
+          : {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+        body: isFormData ? data : JSON.stringify(data),
       });
 
       if (!response.ok) {
@@ -112,7 +140,7 @@ export const productService = {
     }
   },
 
-  // ✅ FIX: Delete product with confirm parameter
+  // Delete product
   deleteProduct: async (productId: number) => {
     try {
       const apiUrl = getApiUrl();
@@ -122,7 +150,6 @@ export const productService = {
         throw new Error('No authentication token found');
       }
 
-      // ✅ ADD: ?confirm=yes query parameter for backend middleware
       const response = await fetch(`${apiUrl}/products/${productId}?confirm=yes`, {
         method: 'DELETE',
         headers: {
@@ -131,7 +158,6 @@ export const productService = {
         },
       });
 
-      // Handle 204 No Content
       if (response.status === 204) {
         return { success: true };
       }
@@ -147,7 +173,6 @@ export const productService = {
         throw new Error(errorMessage);
       }
 
-      // Try to parse JSON, but handle empty response
       const text = await response.text();
       if (text) {
         return JSON.parse(text);

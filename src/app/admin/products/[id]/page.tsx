@@ -32,40 +32,30 @@ export default function EditProductPage() {
     categoryId: 0,
   });
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  
+  // ✅ ADD: Image upload state
+  const [newImages, setNewImages] = useState<File[]>([]);
+  const [imagePreview, setImagePreview] = useState<string[]>([]);
 
   const productId = params.id as string;
-
-  // Derived state - check if user is super admin
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const isAuthenticated = !!user;
 
-  // Wait for auth to fully load before checking permissions
   useEffect(() => {
-    // Don't do anything while auth is still loading
-    if (authLoading) {
-      return;
-    }
+    if (authLoading) return;
 
-    // Auth has finished loading, now we can check
     setAuthChecked(true);
 
-    // Not authenticated - redirect to login
     if (!user) {
-      console.log('No user found, redirecting to login');
       router.replace('/login');
       return;
     }
 
-    // Not super admin - redirect with message
     if (user.role !== 'SUPER_ADMIN') {
-      console.log('User is not super admin:', user.role);
       alert('Only Super Admin can edit products');
       router.replace('/admin/products');
       return;
     }
 
-    // User is super admin - fetch data
-    console.log('User is super admin, fetching product data');
     fetchProduct();
     fetchCategories();
   }, [authLoading, user, productId, router]);
@@ -99,7 +89,6 @@ export default function EditProductPage() {
     try {
       const result = await productService.getCategories();
       
-      // Robust Handling berbagai kemungkinan struktur response
       let categoriesData: { id: number; name: string }[] = [];
       
       if (Array.isArray(result)) {
@@ -108,16 +97,44 @@ export default function EditProductPage() {
         categoriesData = result.data;
       } else if (result?.categories && Array.isArray(result.categories)) {
         categoriesData = result.categories;
-      } else if (result?.data?.categories && Array.isArray(result.data.categories)) {
-        categoriesData = result.data.categories;
       }
       
-      console.log('Categories loaded:', categoriesData); // Debug log
       setCategories(categoriesData);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
-      setCategories([]); // Set empty array on error
+      setCategories([]);
     }
+  };
+
+  // ✅ ADD: Handle image change
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+
+    if (files.length > 5) {
+      alert('Maximum 5 images allowed');
+      return;
+    }
+
+    const previews = files.map((file) => {
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(previews).then((results) => {
+      setImagePreview(results);
+      setNewImages(files);
+    });
+  };
+
+  // ✅ ADD: Remove new image
+  const removeNewImage = (index: number) => {
+    const newImagesFiltered = newImages.filter((_, i) => i !== index);
+    const newPreviewsFiltered = imagePreview.filter((_, i) => i !== index);
+    setNewImages(newImagesFiltered);
+    setImagePreview(newPreviewsFiltered);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -130,7 +147,26 @@ export default function EditProductPage() {
 
     try {
       setSaving(true);
-      await productService.updateProduct(Number(productId), formData);
+
+      // ✅ UPDATE: Check if we have new images
+      if (newImages.length > 0) {
+        // Use FormData for update with images
+        const formDataToSend = new FormData();
+        formDataToSend.append('name', formData.name);
+        formDataToSend.append('description', formData.description);
+        formDataToSend.append('price', String(formData.price));
+        formDataToSend.append('categoryId', String(formData.categoryId));
+
+        newImages.forEach((file) => {
+          formDataToSend.append('images', file);
+        });
+
+        await productService.updateProduct(Number(productId), formDataToSend);
+      } else {
+        // No new images, use JSON
+        await productService.updateProduct(Number(productId), formData);
+      }
+
       alert('Product updated successfully!');
       router.push('/admin/products');
     } catch (error: any) {
@@ -141,7 +177,6 @@ export default function EditProductPage() {
     }
   };
 
-  // ✅ Show loading while auth is being checked
   if (authLoading || !authChecked) {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center">
@@ -151,7 +186,6 @@ export default function EditProductPage() {
     );
   }
 
-  // ✅ Show loading while fetching product (after auth is confirmed)
   if (loading && isSuperAdmin) {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center">
@@ -161,7 +195,6 @@ export default function EditProductPage() {
     );
   }
 
-  // Access denied (shouldn't reach here due to redirect, but just in case)
   if (!isSuperAdmin) {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center">
@@ -177,7 +210,6 @@ export default function EditProductPage() {
     );
   }
 
-  // Product not found
   if (!product) {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center">
@@ -246,12 +278,15 @@ export default function EditProductPage() {
                 <span className="label-text font-semibold text-gray-900">Price (IDR)</span>
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '');
+                  setFormData({ ...formData, price: value ? Number(value) : 0 });
+                }}
                 placeholder="0"
                 className="input input-bordered text-gray-900 bg-white"
-                min="0"
                 required
               />
             </div>
@@ -268,7 +303,6 @@ export default function EditProductPage() {
                 required
               >
                 <option value="">Select category</option>
-                {/* ✅ FIX: Add safety check before map */}
                 {Array.isArray(categories) && categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
@@ -288,11 +322,11 @@ export default function EditProductPage() {
             </p>
           </div>
 
-          {/* Product Images Preview */}
+          {/* Current Product Images */}
           {product.productImages && product.productImages.length > 0 && (
             <div>
               <label className="label">
-                <span className="label-text font-semibold text-gray-900">Product Images</span>
+                <span className="label-text font-semibold text-gray-900">Current Images</span>
               </label>
               <div className="grid grid-cols-4 gap-3">
                 {product.productImages.map((img) => (
@@ -306,6 +340,73 @@ export default function EditProductPage() {
               </div>
             </div>
           )}
+
+          {/* ✅ ADD: Upload New Images */}
+          <div>
+            <label className="label">
+              <span className="label-text font-semibold text-gray-900">
+                Upload New Images
+                <span className="text-xs font-normal text-gray-500 ml-2">
+                  (Optional - will replace existing images)
+                </span>
+              </span>
+            </label>
+
+            <label className="flex flex-col items-center justify-center w-full border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-primary hover:bg-blue-50 transition-all duration-200">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+              <svg
+                className="w-10 h-10 text-gray-400 mb-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              <p className="text-sm font-medium text-gray-700">Click to upload new images</p>
+              <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB (Max 5 files)</p>
+            </label>
+
+            {/* New Image Preview */}
+            {imagePreview.length > 0 && (
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-gray-900 mb-3">
+                  New Images Preview ({imagePreview.length})
+                </p>
+                <div className="grid grid-cols-4 gap-3">
+                  {imagePreview.map((preview, idx) => (
+                    <div key={idx} className="relative group">
+                      <div className="aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
+                        <img
+                          src={preview}
+                          alt={`Preview ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeNewImage(idx)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600"
+                        title="Remove image"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Form Actions */}
           <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
