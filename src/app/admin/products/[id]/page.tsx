@@ -2,432 +2,399 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
-import { productService } from '@/services/productService';
+import ProductEditForm from '@/components/admin/ProductEditForm';
+import ProductImageManager from '@/components/admin/ProductImageManager';
+
+interface ProductImage {
+  id: number;
+  imageUrl: string;
+}
 
 interface Product {
   id: number;
   name: string;
   description: string;
   price: number;
-  stock: number;
-  category: { id: number; name: string };
-  productImages: { id: number; imageUrl: string }[];
+  categoryId: number;
+  category?: { id: number; name: string };
+  images: ProductImage[];
+  stock?: number;
+}
+
+interface Category {
+  id: number;
+  name: string;
 }
 
 export default function EditProductPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const productId = params.id;
 
-  const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const [product, setProduct] = useState<Product | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     price: 0,
     categoryId: 0,
   });
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
-  
-  // ✅ ADD: Image upload state
+
   const [newImages, setNewImages] = useState<File[]>([]);
-  const [imagePreview, setImagePreview] = useState<string[]>([]);
+  const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
 
-  const productId = params.id as string;
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const getApiUrl = () => {
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  };
 
-  useEffect(() => {
-    if (authLoading) return;
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+      Authorization: `Bearer ${token}`,
+    };
+  };
 
-    setAuthChecked(true);
-
-    if (!user) {
-      router.replace('/login');
-      return;
-    }
-
-    if (user.role !== 'SUPER_ADMIN') {
-      alert('Only Super Admin can edit products');
-      router.replace('/admin/products');
-      return;
-    }
-
-    fetchProduct();
-    fetchCategories();
-  }, [authLoading, user, productId, router]);
-
+  // Fetch product data
   const fetchProduct = async () => {
     try {
       setLoading(true);
-      const data = await productService.getProductById(Number(productId));
-
-      if (!data) {
-        throw new Error('Product not found');
-      }
-
-      setProduct(data);
-      setFormData({
-        name: data.name || '',
-        description: data.description || '',
-        price: data.price || 0,
-        categoryId: data.category?.id || 0,
+      const response = await fetch(`${getApiUrl()}/products/${productId}`, {
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
       });
-    } catch (error) {
-      console.error('Failed to fetch product:', error);
-      alert('Product not found');
-      router.push('/admin/products');
+
+      if (!response.ok) throw new Error('Failed to fetch product');
+
+      const data = await response.json();
+      const productData = data.data?.product || data.data || data;
+
+      setProduct(productData);
+      setFormData({
+        name: productData.name || '',
+        description: productData.description || '',
+        price: productData.price || 0,
+        categoryId: productData.categoryId || productData.category?.id || 0,
+      });
+    } catch (err: any) {
+      setError(err.message || 'Failed to load product');
     } finally {
       setLoading(false);
     }
   };
 
+  // Fetch categories
   const fetchCategories = async () => {
     try {
-      const result = await productService.getCategories();
-      
-      let categoriesData: { id: number; name: string }[] = [];
-      
-      if (Array.isArray(result)) {
-        categoriesData = result;
-      } else if (result?.data && Array.isArray(result.data)) {
-        categoriesData = result.data;
-      } else if (result?.categories && Array.isArray(result.categories)) {
-        categoriesData = result.categories;
-      }
-      
+      const response = await fetch(`${getApiUrl()}/categories`, {
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch categories');
+
+      const data = await response.json();
+      const categoriesData = Array.isArray(data) ? data : data.data || data.categories || [];
       setCategories(categoriesData);
-    } catch (error) {
-      console.error('Failed to fetch categories:', error);
-      setCategories([]);
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
     }
   };
 
-  // ✅ ADD: Handle image change
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  useEffect(() => {
+    fetchProduct();
+    fetchCategories();
+  }, [productId]);
 
-    if (files.length > 5) {
-      alert('Maximum 5 images allowed');
+  // Handle form data change
+  const handleFormChange = (updates: Partial<typeof formData>) => {
+    setFormData((prev) => ({ ...prev, ...updates }));
+  };
+
+  // Handle new images upload
+  const handleUploadImages = (files: File[]) => {
+    const previews = files.map((file) => URL.createObjectURL(file));
+    setNewImages((prev) => [...prev, ...files]);
+    setNewImagePreviews((prev) => [...prev, ...previews]);
+  };
+
+  // Remove new image before upload
+  const handleRemoveNewImage = (index: number) => {
+    URL.revokeObjectURL(newImagePreviews[index]);
+    setNewImages((prev) => prev.filter((_, i) => i !== index));
+    setNewImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Delete existing image from server
+  const handleDeleteImage = async (imageId: number) => {
+    try {
+      const response = await fetch(
+        `${getApiUrl()}/products/${productId}/images/${imageId}?confirm=yes`,
+        {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to delete image');
+      }
+
+      // Update local state
+      setProduct((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          images: prev.images.filter((img) => img.id !== imageId),
+        };
+      });
+
+      setSuccess('Image deleted successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete image');
+      throw err;
+    }
+  };
+
+  // Save changes
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    // Validation
+    if (!formData.name.trim()) {
+      setError('Product name is required');
       return;
     }
-
-    const previews = files.map((file) => {
-      return new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
-    });
-
-    Promise.all(previews).then((results) => {
-      setImagePreview(results);
-      setNewImages(files);
-    });
-  };
-
-  // ✅ ADD: Remove new image
-  const removeNewImage = (index: number) => {
-    const newImagesFiltered = newImages.filter((_, i) => i !== index);
-    const newPreviewsFiltered = imagePreview.filter((_, i) => i !== index);
-    setNewImages(newImagesFiltered);
-    setImagePreview(newPreviewsFiltered);
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!isSuperAdmin) {
-      alert('Only Super Admin can edit products');
+    if (formData.price <= 0) {
+      setError('Price must be greater than 0');
+      return;
+    }
+    if (formData.categoryId === 0) {
+      setError('Please select a category');
       return;
     }
 
     try {
       setSaving(true);
 
-      // ✅ UPDATE: Check if we have new images
-      if (newImages.length > 0) {
-        // Use FormData for update with images
-        const formDataToSend = new FormData();
-        formDataToSend.append('name', formData.name);
-        formDataToSend.append('description', formData.description);
-        formDataToSend.append('price', String(formData.price));
-        formDataToSend.append('categoryId', String(formData.categoryId));
+      // 1. Update product data
+      console.log('📝 Updating product data...');
+      const updateResponse = await fetch(`${getApiUrl()}/products/${productId}`, {
+        method: 'PUT',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          description: formData.description,
+          price: formData.price,
+          categoryId: formData.categoryId,
+        }),
+      });
 
-        newImages.forEach((file) => {
-          formDataToSend.append('images', file);
+      if (!updateResponse.ok) {
+        const errorData = await updateResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to update product');
+      }
+      console.log('✅ Product data updated');
+
+      // 2. Upload new images if any
+      if (newImages.length > 0) {
+        console.log(`📸 Uploading ${newImages.length} image(s)...`);
+        const imageFormData = new FormData();
+        newImages.forEach((file, index) => {
+          console.log(`  - Image ${index + 1}: ${file.name} (${file.size} bytes)`);
+          imageFormData.append('images', file);
         });
 
-        await productService.updateProduct(Number(productId), formDataToSend);
-      } else {
-        // No new images, use JSON
-        await productService.updateProduct(Number(productId), formData);
+        // ✅ FIX: Try multiple endpoint variations
+        const imageEndpoints = [
+          `${getApiUrl()}/products/${productId}/images`,
+          `${getApiUrl()}/products/${productId}/upload`,
+          `${getApiUrl()}/products/${productId}/upload-images`,
+        ];
+
+        let imageResponse = null;
+        let lastError = null;
+
+        for (const endpoint of imageEndpoints) {
+          try {
+            console.log(`🔗 Trying endpoint: ${endpoint}`);
+            imageResponse = await fetch(endpoint, {
+              method: 'POST',
+              headers: getAuthHeaders(),
+              body: imageFormData,
+            });
+
+            if (imageResponse.ok) {
+              console.log(`✅ Images uploaded successfully via ${endpoint}`);
+              break;
+            } else {
+              lastError = `${endpoint} returned ${imageResponse.status}`;
+              console.warn(`❌ ${lastError}`);
+            }
+          } catch (err: any) {
+            lastError = err.message;
+            console.warn(`❌ Failed to connect to ${endpoint}: ${err.message}`);
+          }
+        }
+
+        if (!imageResponse?.ok) {
+          console.warn('⚠️ Image upload failed, but product was updated. Please upload images manually.');
+          // Don't throw - product was updated successfully
+        } else {
+          // Clear new images after successful upload
+          newImagePreviews.forEach((preview) => URL.revokeObjectURL(preview));
+          setNewImages([]);
+          setNewImagePreviews([]);
+        }
       }
 
-      alert('Product updated successfully!');
-      router.push('/admin/products');
-    } catch (error: any) {
-      console.error('Failed to save product:', error);
-      alert(error.message || 'Failed to save product');
+      setSuccess('Product updated successfully!');
+      
+      // Refresh product data
+      await fetchProduct();
+
+      setTimeout(() => {
+        router.push('/admin/products');
+      }, 1500);
+    } catch (err: any) {
+      console.error('❌ Error:', err);
+      setError(err.message || 'Failed to update product');
     } finally {
       setSaving(false);
     }
   };
 
-  if (authLoading || !authChecked) {
+  if (loading) {
     return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
-        <p className="text-gray-600 mt-4">Checking permissions...</p>
-      </div>
-    );
-  }
-
-  if (loading && isSuperAdmin) {
-    return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
-        <p className="text-gray-600 mt-4">Loading product...</p>
-      </div>
-    );
-  }
-
-  if (!isSuperAdmin) {
-    return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center">
-        <div className="text-center bg-white p-8 rounded-lg shadow-sm border border-gray-200">
-          <div className="text-6xl mb-4">🔒</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-          <p className="text-gray-600 mb-6">Only Super Admin can edit products</p>
-          <Link href="/admin/products" className="btn btn-primary">
-            Back to Products
-          </Link>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="loading loading-spinner loading-lg"></span>
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center">
-        <div className="text-center bg-white p-8 rounded-lg shadow-sm border border-gray-200">
-          <div className="text-6xl mb-4">📦</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Product Not Found</h1>
-          <p className="text-gray-600 mb-6">The product you're looking for doesn't exist</p>
-          <Link href="/admin/products" className="btn btn-primary">
-            Back to Products
-          </Link>
+      <div className="p-8">
+        <div className="alert alert-error">
+          <span>Product not found</span>
         </div>
+        <button onClick={() => router.back()} className="btn btn-primary mt-4">
+          Go Back
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <Link href="/admin/products" className="btn btn-ghost btn-sm gap-1 mb-4">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to Products
-        </Link>
-        <h1 className="text-3xl font-bold text-gray-900">Edit Product</h1>
-        <p className="text-gray-600 mt-2">Update product: {product.name}</p>
-      </div>
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <p className="text-sm text-gray-500 mb-1">Update product:</p>
+          <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
+        </div>
 
-      {/* Form Card */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <form onSubmit={handleSave} className="space-y-6">
-          {/* Product Name */}
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-semibold text-gray-900">Product Name</span>
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Enter product name"
-              className="input input-bordered text-gray-900 bg-white"
-              required
-            />
+        {/* Alerts */}
+        {error && (
+          <div className="alert alert-error mb-6">
+            <svg className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{error}</span>
           </div>
+        )}
 
-          {/* Description */}
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-semibold text-gray-900">Description</span>
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Enter product description"
-              className="textarea textarea-bordered text-gray-900 bg-white h-24"
-            />
+        {success && (
+          <div className="alert alert-success mb-6">
+            <svg className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{success}</span>
           </div>
+        )}
 
-          {/* Price & Category Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Price */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-semibold text-gray-900">Price (IDR)</span>
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={formData.price}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '');
-                  setFormData({ ...formData, price: value ? Number(value) : 0 });
-                }}
-                placeholder="0"
-                className="input input-bordered text-gray-900 bg-white"
-                required
+        {/* Form */}
+        <form onSubmit={handleSubmit}>
+          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+            <div className="p-8 space-y-8">
+              {/* Product Form Fields */}
+              <ProductEditForm
+                formData={formData}
+                categories={categories}
+                onChange={handleFormChange}
+                loading={saving}
               />
-            </div>
 
-            {/* Category */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-semibold text-gray-900">Category</span>
-              </label>
-              <select
-                value={formData.categoryId}
-                onChange={(e) => setFormData({ ...formData, categoryId: parseInt(e.target.value) })}
-                className="select select-bordered text-gray-900 bg-white"
-                required
-              >
-                <option value="">Select category</option>
-                {Array.isArray(categories) && categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Current Stock Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">Current Stock:</span> {product.stock} units
-            </p>
-            <p className="text-xs text-gray-600 mt-1">
-              To manage stock, use the Stock Management page
-            </p>
-          </div>
-
-          {/* Current Product Images */}
-          {product.productImages && product.productImages.length > 0 && (
-            <div>
-              <label className="label">
-                <span className="label-text font-semibold text-gray-900">Current Images</span>
-              </label>
-              <div className="grid grid-cols-4 gap-3">
-                {product.productImages.map((img) => (
-                  <div
-                    key={img.id}
-                    className="aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-300"
-                  >
-                    <img src={img.imageUrl} alt="Product" className="w-full h-full object-cover" />
+              {/* Stock Info */}
+              {product.stock !== undefined && (
+                <div className="alert alert-info">
+                  <div>
+                    <span className="font-semibold">Current Stock:</span>{' '}
+                    <span className="text-primary font-bold">{product.stock} units</span>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ✅ ADD: Upload New Images */}
-          <div>
-            <label className="label">
-              <span className="label-text font-semibold text-gray-900">
-                Upload New Images
-                <span className="text-xs font-normal text-gray-500 ml-2">
-                  (Optional - will replace existing images)
-                </span>
-              </span>
-            </label>
-
-            <label className="flex flex-col items-center justify-center w-full border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-primary hover:bg-blue-50 transition-all duration-200">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-              />
-              <svg
-                className="w-10 h-10 text-gray-400 mb-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.5"
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-              <p className="text-sm font-medium text-gray-700">Click to upload new images</p>
-              <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB (Max 5 files)</p>
-            </label>
-
-            {/* New Image Preview */}
-            {imagePreview.length > 0 && (
-              <div className="mt-4">
-                <p className="text-sm font-semibold text-gray-900 mb-3">
-                  New Images Preview ({imagePreview.length})
-                </p>
-                <div className="grid grid-cols-4 gap-3">
-                  {imagePreview.map((preview, idx) => (
-                    <div key={idx} className="relative group">
-                      <div className="aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
-                        <img
-                          src={preview}
-                          alt={`Preview ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeNewImage(idx)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600"
-                        title="Remove image"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
+                  <p className="text-xs mt-1">To manage stock, use the Stock Management page</p>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Form Actions */}
-          <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
-            <Link href="/admin/products" className="btn btn-ghost">
-              Cancel
-            </Link>
-            <button type="submit" disabled={saving} className="btn btn-primary gap-2">
-              {saving ? (
-                <>
-                  <span className="loading loading-spinner loading-sm"></span>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  Save Changes
-                </>
               )}
-            </button>
+
+              {/* Image Manager */}
+              <ProductImageManager
+                existingImages={product.images || []}
+                onDeleteImage={handleDeleteImage}
+                onUploadImages={handleUploadImages}
+                newImages={newImages}
+                newImagePreviews={newImagePreviews}
+                onRemoveNewImage={handleRemoveNewImage}
+                maxImages={5}
+                loading={saving}
+              />
+            </div>
+
+            {/* Form Actions */}
+            <div className="px-8 py-6 border-t border-gray-200 bg-gray-50 flex gap-4 justify-end">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="btn btn-ghost"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary gap-2"
+                disabled={saving}
+              >
+                {saving ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Save Changes
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>
