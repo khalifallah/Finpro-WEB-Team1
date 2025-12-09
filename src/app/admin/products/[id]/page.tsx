@@ -10,6 +10,7 @@ interface ProductImage {
   imageUrl: string;
 }
 
+// add productImages property to Product interface
 interface Product {
   id: number;
   name: string;
@@ -18,6 +19,7 @@ interface Product {
   categoryId: number;
   category?: { id: number; name: string };
   images: ProductImage[];
+  productImages?: ProductImage[]; // Backend returns this
   stock?: number;
 }
 
@@ -74,16 +76,55 @@ export default function EditProductPage() {
       if (!response.ok) throw new Error('Failed to fetch product');
 
       const data = await response.json();
-      const productData = data.data?.product || data.data || data;
+      console.log('📦 Raw API Response:', data); // DEBUG
 
-      setProduct(productData);
+      // Handle actual backend response structure
+      let productData: Product;
+
+      // Case 1: Direct response { id, name, productImages, ... }
+      if (data.id && data.productImages) {
+        productData = data;
+      }
+      // Case 2: Wrapped { data: { product: {...} } }
+      else if (data.data?.product) {
+        productData = data.data.product;
+      }
+      // Case 3: Wrapped { data: {...} }
+      else if (data.data) {
+        productData = data.data;
+      }
+      // Case 4: Default
+      else {
+        productData = data;
+      }
+
+      // Use 'productImages' from backend
+      const images = productData.productImages || productData.images || [];
+      
+      // Ensure images have correct structure
+      const normalizedImages: ProductImage[] = images
+        .filter((img: any) => img && img.imageUrl) // Filter out null/undefined
+        .map((img: any) => ({
+          id: img.id,
+          imageUrl: img.imageUrl,
+        }));
+
+      console.log('✅ Normalized Images:', normalizedImages); // DEBUG
+
+      // Set product with normalized images
+      setProduct({
+        ...productData,
+        images: normalizedImages, // Convert productImages to images for component
+      } as Product);
+
       setFormData({
         name: productData.name || '',
         description: productData.description || '',
         price: productData.price || 0,
-        categoryId: productData.categoryId || productData.category?.id || 0,
+        categoryId: productData.category?.id || 0,
       });
     } catch (err: any) {
+      console.error('❌ Error fetching product:', err);
       setError(err.message || 'Failed to load product');
     } finally {
       setLoading(false);
@@ -122,21 +163,28 @@ export default function EditProductPage() {
 
   // Handle new images upload
   const handleUploadImages = (files: File[]) => {
-    const previews = files.map((file) => URL.createObjectURL(file));
+    console.log(`📸 Adding ${files.length} new image(s) to upload`);
+    const previews = files.map((file) => {
+      const url = URL.createObjectURL(file);
+      console.log(`  - Preview created for: ${file.name}`);
+      return url;
+    });
     setNewImages((prev) => [...prev, ...files]);
     setNewImagePreviews((prev) => [...prev, ...previews]);
   };
 
   // Remove new image before upload
   const handleRemoveNewImage = (index: number) => {
+    console.log(`🗑️ Removing new image at index ${index}`);
     URL.revokeObjectURL(newImagePreviews[index]);
     setNewImages((prev) => prev.filter((_, i) => i !== index));
     setNewImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Delete existing image from server
-  const handleDeleteImage = async (imageId: number) => {
+  const handleDeleteImage = async (imageId: number): Promise<void> => {
     try {
+      console.log(`🗑️ Deleting image ${imageId}...`);
       const response = await fetch(
         `${getApiUrl()}/products/${productId}/images/${imageId}?confirm=yes`,
         {
@@ -147,10 +195,10 @@ export default function EditProductPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to delete image');
+        throw new Error(errorData.error || errorData.message || 'Failed to delete image');
       }
 
-      // Update local state
+      // Update local state - remove deleted image
       setProduct((prev) => {
         if (!prev) return prev;
         return {
@@ -162,7 +210,9 @@ export default function EditProductPage() {
       setSuccess('Image deleted successfully');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
+      console.error('❌ Failed to delete image:', err);
       setError(err.message || 'Failed to delete image');
+      // Don't return anything - just throw error for caller to handle
       throw err;
     }
   };
@@ -191,7 +241,6 @@ export default function EditProductPage() {
       setSaving(true);
 
       // 1. Update product data
-      console.log('📝 Updating product data...');
       const updateResponse = await fetch(`${getApiUrl()}/products/${productId}`, {
         method: 'PUT',
         headers: {
@@ -208,60 +257,40 @@ export default function EditProductPage() {
 
       if (!updateResponse.ok) {
         const errorData = await updateResponse.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to update product');
+        throw new Error(errorData.error || errorData.message || 'Failed to update product');
       }
-      console.log('✅ Product data updated');
 
       // 2. Upload new images if any
       if (newImages.length > 0) {
-        console.log(`📸 Uploading ${newImages.length} image(s)...`);
+        console.log(`📸 Uploading ${newImages.length} new image(s)...`);
         const imageFormData = new FormData();
         newImages.forEach((file, index) => {
-          console.log(`  - Image ${index + 1}: ${file.name} (${file.size} bytes)`);
+          console.log(`  - Image ${index + 1}: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
           imageFormData.append('images', file);
         });
 
-        // ✅ FIX: Try multiple endpoint variations
-        const imageEndpoints = [
-          `${getApiUrl()}/products/${productId}/images`,
-          `${getApiUrl()}/products/${productId}/upload`,
-          `${getApiUrl()}/products/${productId}/upload-images`,
-        ];
+        const imageEndpoint = `${getApiUrl()}/products/${productId}/images`;
+        console.log(`🔗 Uploading to: ${imageEndpoint}`);
 
-        let imageResponse = null;
-        let lastError = null;
+        const imageResponse = await fetch(imageEndpoint, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: imageFormData,
+        });
 
-        for (const endpoint of imageEndpoints) {
-          try {
-            console.log(`🔗 Trying endpoint: ${endpoint}`);
-            imageResponse = await fetch(endpoint, {
-              method: 'POST',
-              headers: getAuthHeaders(),
-              body: imageFormData,
-            });
-
-            if (imageResponse.ok) {
-              console.log(`✅ Images uploaded successfully via ${endpoint}`);
-              break;
-            } else {
-              lastError = `${endpoint} returned ${imageResponse.status}`;
-              console.warn(`❌ ${lastError}`);
-            }
-          } catch (err: any) {
-            lastError = err.message;
-            console.warn(`❌ Failed to connect to ${endpoint}: ${err.message}`);
-          }
+        if (!imageResponse.ok) {
+          const errorData = await imageResponse.json().catch(() => ({}));
+          console.error('❌ Image upload failed:', errorData);
+          throw new Error(errorData.error || errorData.message || 'Failed to upload images');
         }
 
-        if (!imageResponse?.ok) {
-          console.warn('⚠️ Image upload failed, but product was updated. Please upload images manually.');
-          // Don't throw - product was updated successfully
-        } else {
-          // Clear new images after successful upload
-          newImagePreviews.forEach((preview) => URL.revokeObjectURL(preview));
-          setNewImages([]);
-          setNewImagePreviews([]);
-        }
+        // Clear new images after successful upload
+        newImagePreviews.forEach((preview) => {
+          URL.revokeObjectURL(preview);
+          console.log(`  - Preview revoked: ${preview}`);
+        });
+        setNewImages([]);
+        setNewImagePreviews([]);
       }
 
       setSuccess('Product updated successfully!');
@@ -273,7 +302,6 @@ export default function EditProductPage() {
         router.push('/admin/products');
       }, 1500);
     } catch (err: any) {
-      console.error('❌ Error:', err);
       setError(err.message || 'Failed to update product');
     } finally {
       setSaving(false);
