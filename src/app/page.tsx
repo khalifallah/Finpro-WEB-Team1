@@ -50,6 +50,29 @@ export default function Home() {
     }
   }, [homepageData]);
 
+  const handleManualStoreSelect = async (store: any) => {
+    console.log("User manually selected store:", store);
+
+    // 1. Update State UI agar tampilan berubah (Nama toko di atas produk)
+    setSelectedStore(store);
+
+    // 2. Simpan ID ke LocalStorage (Wajib, agar CartContext & AddToCart bisa baca)
+    localStorage.setItem("storeId", String(store.id));
+
+    // 3. Refresh keranjang (siapa tahu user punya barang di toko ini sebelumnya)
+    await refreshCart();
+    fetchHomepageData(undefined, undefined, store.id);
+
+    // 4. Tutup Modal
+    setShowLocationModal(false);
+
+    // 5. (Opsional) Beri feedback ke user
+    showToast(`Shopping at ${store.name}`, "success");
+
+    // 6. (Opsional) Refresh data produk jika API support filter by storeId
+    // fetchHomepageData(undefined, undefined, store.id);
+  };
+
   // Function to get user's location
   const getUserLocation = () => {
     if (!navigator.geolocation) {
@@ -74,20 +97,28 @@ export default function Home() {
   };
 
   // Function to fetch homepage data
-  const fetchHomepageData = async (latitude?: number, longitude?: number) => {
+  const fetchHomepageData = async (
+    latitude?: number,
+    longitude?: number,
+    storeIdOverride?: number
+  ) => {
     try {
       setLoading(true);
       setError(null);
 
       console.log("Fetching homepage data...");
 
-      // Build query params if location is provided
       const params: any = {};
-      if (latitude && longitude) {
+
+      // Build query params if location is provided
+      if (storeIdOverride) {
+        params.storeId = storeIdOverride;
+      }
+      // Jika tidak ada storeId manual, baru kirim koordinat (Auto)
+      else if (latitude && longitude) {
         params.lat = latitude;
         params.lng = longitude;
       }
-
       // Fetch homepage data directly
       const response = await axiosInstance.get("/homepage", {
         params,
@@ -253,7 +284,7 @@ export default function Home() {
   }
 
   // Fix the add to cart function in ProductCard component
-  const handleAddToCart = async (product: any) => {
+  const handleAddToCart = async (product: any, quantity: number = 1) => {
     if (!user) {
       // Store redirect path and show login prompt
       localStorage.setItem("redirectAfterLogin", window.location.pathname);
@@ -269,12 +300,19 @@ export default function Home() {
       return;
     }
 
+    if (!selectedStore?.id) {
+      showToast("Please select a store/location first.", "error");
+      // Opsional: Buka modal lokasi otomatis
+      setShowLocationModal(true);
+      return;
+    }
+
     try {
-      const storeId = selectedStore?.id || 1; // Use selected store or default
+      const storeId = selectedStore.id; // Use selected store or default
       const response = await axiosInstance.post("/cart/items", {
         productId: product.id,
-        quantity: 1,
-        storeId,
+        quantity: quantity,
+        storeId: Number(storeId),
       });
 
       showToast("Item added to cart successfully!", "success");
@@ -296,6 +334,7 @@ export default function Home() {
         isOpen={showLocationModal}
         onAccept={handleAcceptLocation}
         onDeny={handleDenyLocation}
+        onSelectStore={handleManualStoreSelect}
       />
 
       {/* Navigation Bar */}

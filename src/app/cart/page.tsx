@@ -148,16 +148,24 @@ export default function CartPage() {
 
   const proceedToCheckout = async () => {
     try {
-      const response = await cartService.getCheckoutPreview();
-      if (response.data.preview.canCheckout) {
-        router.push("/checkout");
-      } else {
-        setError(
-          "Cannot proceed to checkout. Your cart may be empty or items unavailable."
-        );
+      if (!cart || cart.cartItems.length === 0) {
+        setError("Your cart is empty");
+        return;
       }
+
+      const storeId = localStorage.getItem("storeId");
+      if (!storeId) {
+        setError("Store information is missing");
+        return;
+      }
+
+      const allItemIds = cart.cartItems.map((item) => item.id);
+
+      const itemsParam = JSON.stringify(allItemIds);
+
+      router.push(`/checkout?storeId=${storeId}&items=${itemsParam}`);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to proceed to checkout");
+      setError(err.message || "Failed to proceed to checkout");
     }
   };
 
