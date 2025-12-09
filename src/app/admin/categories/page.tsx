@@ -171,17 +171,31 @@ export default function CategoriesPage() {
       const token = localStorage.getItem('token');
       const apiUrl = getApiUrl();
 
-      const response = await fetch(`${apiUrl}/categories/${categoryId}`, {
+      // Middleware Backend |?confirm=yes query parameter
+      const response = await fetch(`${apiUrl}/categories/${categoryId}?confirm=yes`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
-      if (!response.ok) throw new Error('Failed to delete category');
+      if (!response.ok) {
+        let errorMessage = 'Failed to delete category';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData?.message || errorData?.error || errorMessage;
+        } catch {
+          errorMessage = `Error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
 
       fetchCategories(pagination.page, searchQuery);
       setDeleteConfirm({ isOpen: false });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete category:', error);
+      alert(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
