@@ -1,3 +1,4 @@
+import { axiosInstance } from "@/libs/axios/axios.config";
 import React, { useEffect, useState } from "react";
 import { FaStar, FaClock } from "react-icons/fa";
 
@@ -14,16 +15,18 @@ interface LocationPermissionModalProps {
   isOpen: boolean;
   onAccept: () => void;
   onDeny: () => void;
+  onSelectStore: (store: Store) => void;
 }
 
 const LocationPermissionModal: React.FC<LocationPermissionModalProps> = ({
   isOpen,
   onAccept,
   onDeny,
+  onSelectStore,
 }) => {
   const [stores, setStores] = useState<Store[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
+  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
 
   // Fetch nearby stores when modal opens
   useEffect(() => {
@@ -35,40 +38,50 @@ const LocationPermissionModal: React.FC<LocationPermissionModalProps> = ({
   const fetchNearbyStores = async () => {
     setIsLoading(true);
     try {
-      // In a real app, this would fetch from your API
-      // For demo, we'll use mock data
-      const mockStores: Store[] = [
-        {
-          id: 1,
-          name: "Beyond Market Central",
-          address: "123 Main St, City Center",
-          distance: 1.2,
-          rating: 4.5,
-          deliveryTime: "15-25 min"
-        },
-        {
-          id: 2,
-          name: "Beyond Market North",
-          address: "456 North Ave, North District",
-          distance: 2.8,
-          rating: 4.2,
-          deliveryTime: "25-35 min"
-        },
-        {
-          id: 3,
-          name: "Beyond Market East",
-          address: "789 East Blvd, East Side",
-          distance: 3.5,
-          rating: 4.7,
-          deliveryTime: "30-40 min"
-        }
-      ];
-      setStores(mockStores);
-      setSelectedStoreId(mockStores[0]?.id || null);
+      const storedLocation = localStorage.getItem("userLocation");
+      let params = {};
+
+      if (storedLocation) {
+        const { latitude, longitude } = JSON.parse(storedLocation);
+        // Kirim lat & lng ke Backend agar backend bisa hitung jarak
+        params = { lat: latitude, lng: longitude };
+      }
+
+      // 2. [UPDATE] Panggil API dengan params lokasi
+      const response = await axiosInstance.get("/stores", { params });
+      console.log("Response Raw:", response); // Debugging
+
+      const storesFromApi = response.data?.data?.stores || [];
+
+      const formattedStores = storesFromApi.map((store: any) => ({
+        id: store.id,
+        name: store.name,
+        address: store.address,
+        distance: 0, // Default karena API belum return distance
+        rating: 4.5, // Default
+        deliveryTime: "15-30 min", // Default
+      }));
+
+      setStores(formattedStores);
+
+      // Auto-select toko pertama jika ada
+      if (formattedStores.length > 0) {
+      }
     } catch (error) {
       console.error("Failed to fetch stores:", error);
+      setStores([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+  const handleSelect = (store: Store) => {
+    setSelectedStore(store);
+  };
+
+  const handleContinue = () => {
+    if (selectedStore) {
+      // [ACTION] Kirim data toko asli ke Page.tsx
+      onSelectStore(selectedStore);
     }
   };
 
@@ -101,11 +114,11 @@ const LocationPermissionModal: React.FC<LocationPermissionModalProps> = ({
                 <div
                   key={store.id}
                   className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                    selectedStoreId === store.id
-                      ? 'border-primary bg-primary/5'
-                      : 'border-gray-200 hover:border-primary/50'
+                    selectedStore?.id === store.id
+                      ? "border-primary bg-primary/5"
+                      : "border-gray-200 hover:border-primary/50"
                   }`}
-                  onClick={() => setSelectedStoreId(store.id)}
+                  onClick={() => handleSelect(store)}
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
@@ -115,8 +128,10 @@ const LocationPermissionModal: React.FC<LocationPermissionModalProps> = ({
                           {store.distance} km
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600 mb-2">{store.address}</p>
-                      
+                      <p className="text-sm text-gray-600 mb-2">
+                        {store.address}
+                      </p>
+
                       <div className="flex items-center gap-4 text-xs">
                         <div className="flex items-center gap-1">
                           <FaStar className="text-yellow-500" />
@@ -128,12 +143,12 @@ const LocationPermissionModal: React.FC<LocationPermissionModalProps> = ({
                         </div>
                       </div>
                     </div>
-                    
+
                     <input
                       type="radio"
                       name="store"
-                      checked={selectedStoreId === store.id}
-                      onChange={() => setSelectedStoreId(store.id)}
+                      checked={selectedStore?.distance === store.id}
+                      onChange={() => handleSelect(store)}
                       className="radio radio-primary"
                     />
                   </div>
@@ -152,10 +167,7 @@ const LocationPermissionModal: React.FC<LocationPermissionModalProps> = ({
                   </p>
                 </div>
               </div>
-              <button
-                onClick={onAccept}
-                className="btn btn-primary btn-block"
-              >
+              <button onClick={onAccept} className="btn btn-primary btn-block">
                 Allow Location Access
               </button>
             </div>
@@ -163,22 +175,13 @@ const LocationPermissionModal: React.FC<LocationPermissionModalProps> = ({
         )}
 
         <div className="modal-action">
-          <button 
-            onClick={onDeny} 
-            className="btn btn-ghost"
-          >
+          <button onClick={onDeny} className="btn btn-ghost">
             Cancel
           </button>
-          <button 
-            onClick={() => {
-              // Handle store selection
-              if (selectedStoreId) {
-                console.log("Selected store:", selectedStoreId);
-                onDeny(); // Close modal
-              }
-            }}
+          <button
+            onClick={handleContinue}
             className="btn btn-primary"
-            disabled={!selectedStoreId}
+            disabled={!selectedStore}
           >
             Continue with Selected Store
           </button>

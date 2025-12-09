@@ -1,25 +1,27 @@
-'use client';
+"use client";
 
 import React, { useState } from "react";
-import { ProductResponse } from "@/types/product.types"; // ← TAMBAH (1)
-import { useAuth } from "@/hooks/useAuth"; // ← UPDATE (2)
+import { ProductResponse } from "@/types/product.types";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ProductCardProps {
-  product: ProductResponse; // ← UPDATE (3)
-  onViewDetails?: () => void; // ← TAMBAH (4)
-  onAddToCart?: () => void; // ← TAMBAH (4)
+  product: ProductResponse;
+  onViewDetails?: () => void;
+  // [UPDATE 1] Ubah tipe function agar menerima product dan quantity
+  onAddToCart?: (product: ProductResponse, quantity: number) => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ 
-  product, 
-  onViewDetails, 
-  onAddToCart 
+const ProductCard: React.FC<ProductCardProps> = ({
+  product,
+  onViewDetails,
+  onAddToCart,
 }) => {
   const [quantity, setQuantity] = useState(1);
-  const { isAuthenticated } = useAuth(); // ← UPDATE (5)
+  const { isAuthenticated } = useAuth();
 
-  // ✅ UPDATE: Gunakan product.productImages (sesuai backend)
-  const imageUrl = product.productImages?.[0]?.imageUrl || "https://via.placeholder.com/300x200";
+  const imageUrl =
+    product.productImages?.[0]?.imageUrl ||
+    "https://via.placeholder.com/300x200";
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -29,32 +31,34 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }).format(price);
   };
 
- const handleAddToCart = () => {
-    if (!isAuthenticated) { // ← UPDATE (6)
+  const handleAddToCart = () => {
+    if (!isAuthenticated) {
       localStorage.setItem("redirectAfterLogin", window.location.pathname);
       window.location.href = "/login";
       return;
     }
-    
-    console.log("Added to cart:", product.id, quantity);
-    onAddToCart?.(); // ← TAMBAH (7)
+
+    console.log("Added to cart:", product.name, "Qty:", quantity);
+
+    // [UPDATE 2] Kirim data product DAN quantity ke parent (page.tsx)
+    if (onAddToCart) {
+      onAddToCart(product, quantity);
+    }
   };
 
   const handleQuickView = () => {
-    console.log("Quick view:", product.id);
-    onViewDetails?.(); // ← TAMBAH (8)
+    onViewDetails?.();
   };
 
-  // ✅ UPDATE: Gunakan product.canAddToCart dari backend
   const isOutOfStock = !product.canAddToCart || product.stock === 0;
-  const isAddToCartDisabled = !isAuthenticated || isOutOfStock; // ← UPDATE (9)
+  const isAddToCartDisabled = !isAuthenticated || isOutOfStock;
 
   return (
     <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300">
       {/* Product Image */}
       <figure className="relative h-48 overflow-hidden">
         <img
-          src={imageUrl} // ← UPDATE (10)
+          src={imageUrl}
           alt={product.name}
           className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
         />
@@ -107,7 +111,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
               className="join-item input input-xs w-12 text-center"
               value={quantity}
               onChange={(e) =>
-                setQuantity(Math.max(1, parseInt(e.target.value) || 1))
+                setQuantity(
+                  Math.max(
+                    1,
+                    Math.min(product.stock, parseInt(e.target.value) || 1)
+                  )
+                )
               }
               min="1"
               max={product.stock}
@@ -121,12 +130,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
             </button>
           </div>
         </div>
+
         {/* Action Buttons */}
         <div className="card-actions">
           <button
             className="btn btn-primary btn-sm flex-1"
             onClick={handleAddToCart}
-            disabled={isAddToCartDisabled}
+            disabled={isOutOfStock} // Biarkan tombol aktif walau belum login, nanti redirect
           >
             {!isAuthenticated ? (
               <>
