@@ -11,15 +11,6 @@ interface DashboardStats {
   totalStores: number;
 }
 
-interface QuickLink {
-  title: string;
-  description: string;
-  href: string;
-  icon: string;
-  color: string;
-  superAdminOnly?: boolean;
-}
-
 export default function DashboardPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
@@ -31,74 +22,6 @@ export default function DashboardPage() {
   });
   const [loading, setLoading] = useState(true);
 
-  // Quick links
-  const quickLinks: QuickLink[] = [
-    {
-      title: 'Products',
-      description: isSuperAdmin 
-        ? 'Manage products, add new items, update prices' 
-        : 'View all products (Read Only)',
-      href: '/admin/products',
-      icon: '📦',
-      color: 'bg-blue-500',
-    },
-    {
-      title: 'Categories',
-      description: isSuperAdmin 
-        ? 'Manage product categories' 
-        : 'View product categories (Read Only)',
-      href: '/admin/categories',
-      icon: '🏷️',
-      color: 'bg-purple-500',
-    },
-    {
-      title: 'Stock Management',
-      description: isSuperAdmin 
-        ? 'Manage inventory across all stores' 
-        : 'Manage inventory for your store',
-      href: '/admin/stocks',
-      icon: '📈',
-      color: 'bg-green-500',
-    },
-    {
-      title: 'Discounts',
-      description: 'Create and manage product discounts',
-      href: '/admin/discounts',
-      icon: '🎁',
-      color: 'bg-orange-500',
-    },
-    {
-      title: 'Sales Report',
-      description: isSuperAdmin 
-        ? 'View sales reports for all stores' 
-        : 'View sales reports for your store',
-      href: '/admin/reports/sales',
-      icon: '💰',
-      color: 'bg-emerald-500',
-    },
-    {
-      title: 'Stock Report',
-      description: isSuperAdmin 
-        ? 'View stock history for all stores' 
-        : 'View stock history for your store',
-      href: '/admin/reports/stock',
-      icon: '📊',
-      color: 'bg-cyan-500',
-    },
-    {
-      title: 'User Management',
-      description: 'Manage store admins and view registered users',
-      href: '/admin/users',
-      icon: '👥',
-      color: 'bg-red-500',
-      superAdminOnly: true,
-    },
-  ];
-
-  // Filter links based on role
-  const filteredLinks = quickLinks.filter(
-    (link) => !link.superAdminOnly || isSuperAdmin
-  );
 
   // Fetch dashboard stats (optional - bisa di-implement nanti)
   useEffect(() => {
@@ -165,36 +88,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Quick Navigation */}
-      <div>
-        <h2 className="text-xl font-bold mb-4 text-black">Quick Navigation</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="card bg-white shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-1 text-black"
-            >
-              <div className="card-body">
-                <div className="flex items-start gap-4">
-                  <div className={`${link.color} text-white text-2xl p-3 rounded-lg`}>
-                    {link.icon}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="card-title text-base">{link.title}</h3>
-                    <p className="text-sm text-gray-500 mt-1">{link.description}</p>
-                  </div>
-                </div>
-                <div className="card-actions justify-end mt-2">
-                  <span className="text-primary text-sm font-medium">
-                    Go to {link.title} &rarr;
-                  </span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
+      
 
       {/* Feature Overview */}
       <div>
@@ -222,7 +116,7 @@ export default function DashboardPage() {
                 <Link href="/admin/products" className="btn btn-primary btn-sm">
                   View Products
                 </Link>
-                <Link href="/admin/categories" className="btn btn-outline btn-sm">
+                <Link href="/admin/categories" className="btn btn-outline btn-sm text-blue-500">
                   View Categories
                 </Link>
               </div>
@@ -279,7 +173,7 @@ export default function DashboardPage() {
                 <Link href="/admin/reports/sales" className="btn btn-primary btn-sm">
                   Sales Report
                 </Link>
-                <Link href="/admin/reports/stock" className="btn btn-outline btn-sm">
+                <Link href="/admin/reports/stock" className="btn btn-outline btn-sm text-blue-500">
                   Stock Report
                 </Link>
               </div>

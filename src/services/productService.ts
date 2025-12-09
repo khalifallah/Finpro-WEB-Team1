@@ -1,167 +1,186 @@
 import { axiosInstance } from '@/libs/axios/axios.config';
-import {
-  ProductQuery,
-  ProductResponse,
-  CreateProductRequest,
-  UpdateProductRequest,
-  ProductListResponse,
-} from '@/types/product.types';
+
+const getApiUrl = () => {
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+};
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  };
+};
 
 export const productService = {
-  /**
-   * Get all products with pagination
-   * Backend returns: { products: [...], pagination: {...} }
-   */
-  getProducts: async (query: ProductQuery): Promise<ProductListResponse> => {
+  // Get all products
+  getProducts: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    categoryId?: number;
+  }) => {
     try {
-      const response = await axiosInstance.get('/products', { params: query });
+      const apiUrl = getApiUrl();
+      const searchParams = new URLSearchParams();
 
-      return {
-        data: {
-          products: response.data.products || [],
-          total: response.data.total || 0, // ✅ Tambahkan ini
-        },
-        pagination: {
-          page: response.data.pagination?.page || query.page || 1,
-          limit: response.data.pagination?.limit || query.limit || 10,
-          total: response.data.total || 0,
-          totalPages: Math.ceil((response.data.total || 0) / (query.limit || 10)),
-        },
-      };
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      return {
-        data: {
-          products: [],
-          total: 0, // ✅ Tambahkan ini
-        },
-        pagination: {
-          page: 1,
-          limit: 10,
-          total: 0,
-          totalPages: 0,
-        },
-      };
-    }
-  },
+      if (params?.page) searchParams.append('page', String(params.page));
+      if (params?.limit) searchParams.append('limit', String(params.limit));
+      if (params?.search) searchParams.append('search', params.search);
+      if (params?.categoryId) searchParams.append('categoryId', String(params.categoryId));
 
-  getProductById: async (id: number): Promise<ProductResponse> => {
-    try {
-      const response = await axiosInstance.get(`/products/${id}`);
-      // ✅ Adjust based on actual backend response
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Error fetching product:', error);
-      throw error;
-    }
-  },
-
-  createProduct: async (
-    data: CreateProductRequest,
-    images: File[]
-  ): Promise<ProductResponse> => {
-    try {
-      const formData = new FormData();
-      formData.append('name', data.name);
-      formData.append('description', data.description);
-      formData.append('price', String(data.price));
-      formData.append('categoryId', String(data.categoryId));
-      if (data.storeId) formData.append('storeId', String(data.storeId));
-
-      images.forEach((image) => {
-        formData.append('productImages', image);
+      const response = await fetch(`${apiUrl}/products?${searchParams}`, {
+        headers: getAuthHeaders(),
       });
 
-      const response = await axiosInstance.post('/products', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Error creating product:', error);
-      throw error;
-    }
-  },
-
-  updateProduct: async (
-    id: number,
-    data: UpdateProductRequest,
-    images?: File[]
-  ): Promise<ProductResponse> => {
-    try {
-      const formData = new FormData();
-      if (data.name) formData.append('name', data.name);
-      if (data.description) formData.append('description', data.description);
-      if (data.price !== undefined) formData.append('price', String(data.price));
-      if (data.categoryId) formData.append('categoryId', String(data.categoryId));
-
-      if (images && images.length > 0) {
-        images.forEach((image) => {
-          formData.append('productImages', image);
-        });
+      if (!response.ok) {
+        throw new Error('Failed to fetch products');
       }
 
-      const response = await axiosInstance.put(`/products/${id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      return response.json();
+    } catch (error: any) {
+      console.error('Get products error:', error);
+      throw new Error(error.message || 'Failed to fetch products');
+    }
+  },
+
+  // Get product by ID
+  getProductById: async (id: number) => {
+    try {
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/products/${id}`, {
+        headers: getAuthHeaders(),
       });
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Error updating product:', error);
-      throw error;
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch product');
+      }
+
+      return response.json();
+    } catch (error: any) {
+      console.error('Get product error:', error);
+      throw new Error(error.message || 'Failed to fetch product');
     }
   },
 
-  deleteProduct: async (id: number): Promise<void> => {
+  // Get categories
+  getCategories: async () => {
     try {
-      await axiosInstance.delete(`/products/${id}`);
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get all categories
-   */
-  getCategories: async (search?: string): Promise<{ data: any[] }> => {
-    try {
-      const response = await axiosInstance.get('/categories', {
-        params: search ? { search } : undefined,
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/categories`, {
+        headers: getAuthHeaders(),
       });
-      return {
-        data: response.data.data || response.data || [],
-      };
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      return { data: [] };
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories');
+      }
+
+      return response.json();
+    } catch (error: any) {
+      console.error('Get categories error:', error);
+      throw new Error(error.message || 'Failed to fetch categories');
     }
   },
 
-  createCategory: async (data: any): Promise<any> => {
+  // Create product
+  createProduct: async (formData: FormData) => {
     try {
-      const response = await axiosInstance.post('/categories', data);
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Error creating category:', error);
-      throw error;
+      const apiUrl = getApiUrl();
+      const token = localStorage.getItem('token');
+
+      const response = await fetch(`${apiUrl}/products`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to create product');
+      }
+
+      return response.json();
+    } catch (error: any) {
+      console.error('Create product error:', error);
+      throw new Error(error.message || 'Failed to create product');
     }
   },
 
-  updateCategory: async (id: number, data: any): Promise<any> => {
+  // Update product
+  updateProduct: async (id: number, data: FormData | Record<string, any>) => {
     try {
-      const response = await axiosInstance.put(`/categories/${id}`, data);
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Error updating category:', error);
-      throw error;
+      const apiUrl = getApiUrl();
+      const token = localStorage.getItem('token');
+
+      // Check if data is FormData (has images) or plain object
+      const isFormData = data instanceof FormData;
+
+      const response = await fetch(`${apiUrl}/products/${id}`, {
+        method: 'PUT',
+        headers: isFormData
+          ? { Authorization: `Bearer ${token}` }
+          : {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+        body: isFormData ? data : JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to update product');
+      }
+
+      return response.json();
+    } catch (error: any) {
+      console.error('Update product error:', error);
+      throw new Error(error.message || 'Failed to update product');
     }
   },
 
-  deleteCategory: async (id: number): Promise<void> => {
+  // Delete product
+  deleteProduct: async (productId: number) => {
     try {
-      await axiosInstance.delete(`/categories/${id}`);
-    } catch (error) {
-      console.error('Error deleting category:', error);
-      throw error;
+      const apiUrl = getApiUrl();
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch(`${apiUrl}/products/${productId}?confirm=yes`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.status === 204) {
+        return { success: true };
+      }
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to delete product';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData?.message || errorData?.error || errorMessage;
+        } catch {
+          errorMessage = `Error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const text = await response.text();
+      if (text) {
+        return JSON.parse(text);
+      }
+      return { success: true };
+    } catch (error: any) {
+      console.error('Delete product error:', error);
+      throw new Error(error.message || 'Failed to delete product');
     }
   },
 };

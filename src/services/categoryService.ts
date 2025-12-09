@@ -1,4 +1,4 @@
-import { axiosInstance, axiosAuthInstance } from "@/libs/axios/axios.config";
+import { axiosInstance } from "@/libs/axios/axios.config";
 import axiosError from "@/libs/axios/axios.error";
 import {
   CategoryResponse,
@@ -8,14 +8,9 @@ import {
 
 export const categoryService = {
   // GET /categories (ADMIN)
-  getCategories: async (
-    page = 1,
-    limit = 10,
-    token?: string
-  ): Promise<any> => {
+  getCategories: async (page = 1, limit = 10): Promise<any> => {
     try {
-      const instance = token ? axiosAuthInstance(token) : axiosInstance;
-      const response = await instance.get("/categories", {
+      const response = await axiosInstance.get("/categories", {
         params: { page, limit },
       });
       return response.data.data;
@@ -37,13 +32,9 @@ export const categoryService = {
   },
 
   // POST /categories (SUPER_ADMIN)
-  createCategory: async (
-    data: CreateCategoryRequest,
-    token: string
-  ): Promise<CategoryResponse> => {
+  createCategory: async (data: CreateCategoryRequest): Promise<CategoryResponse> => {
     try {
-      const instance = axiosAuthInstance(token);
-      const response = await instance.post("/categories", data);
+      const response = await axiosInstance.post("/categories", data);
       return response.data.data;
     } catch (error) {
       axiosError(error, "Failed to create category");
@@ -52,14 +43,9 @@ export const categoryService = {
   },
 
   // PUT /categories/:id (SUPER_ADMIN)
-  updateCategory: async (
-    id: number,
-    data: UpdateCategoryRequest,
-    token: string
-  ): Promise<CategoryResponse> => {
+  updateCategory: async (id: number, data: UpdateCategoryRequest): Promise<CategoryResponse> => {
     try {
-      const instance = axiosAuthInstance(token);
-      const response = await instance.put(`/categories/${id}`, data);
+      const response = await axiosInstance.put(`/categories/${id}`, data);
       return response.data.data;
     } catch (error) {
       axiosError(error, "Failed to update category");
@@ -68,10 +54,9 @@ export const categoryService = {
   },
 
   // DELETE /categories/:id (SUPER_ADMIN)
-  deleteCategory: async (id: number, token: string): Promise<void> => {
+  deleteCategory: async (id: number): Promise<void> => {
     try {
-      const instance = axiosAuthInstance(token);
-      await instance.delete(`/categories/${id}?confirm=yes`);
+      await axiosInstance.delete(`/categories/${id}?confirm=yes`);
     } catch (error) {
       axiosError(error, "Failed to delete category");
       throw error;
@@ -79,14 +64,9 @@ export const categoryService = {
   },
 
   // GET /categories/deleted (SUPER_ADMIN)
-  getDeletedCategories: async (
-    page = 1,
-    limit = 10,
-    token?: string
-  ): Promise<any> => {
+  getDeletedCategories: async (page = 1, limit = 10): Promise<any> => {
     try {
-      const instance = token ? axiosAuthInstance(token) : axiosInstance;
-      const response = await instance.get("/categories/deleted", {
+      const response = await axiosInstance.get("/categories/deleted", {
         params: { page, limit },
       });
       return response.data.data;
@@ -97,13 +77,9 @@ export const categoryService = {
   },
 
   // PUT /categories/:id/restore (SUPER_ADMIN)
-  restoreCategory: async (
-    id: number,
-    token: string
-  ): Promise<CategoryResponse> => {
+  restoreCategory: async (id: number): Promise<CategoryResponse> => {
     try {
-      const instance = axiosAuthInstance(token);
-      const response = await instance.put(`/categories/${id}/restore`, {});
+      const response = await axiosInstance.put(`/categories/${id}/restore`, {});
       return response.data.data;
     } catch (error) {
       axiosError(error, "Failed to restore category");
