@@ -345,9 +345,11 @@ export default function CategoriesPage() {
       <ConfirmDialog
         isOpen={deleteConfirm.isOpen}
         onClose={() => setDeleteConfirm({ isOpen: false })}
-        onConfirm={() =>
-          deleteConfirm.categoryId && handleDelete(deleteConfirm.categoryId)
-        }
+        onConfirm={() => {
+          // Ensure it returns Promise<void> or void
+          if (!deleteConfirm.categoryId) return;
+          handleDelete(deleteConfirm.categoryId);
+        }}
         title="Delete Category"
         message={`Delete "${deleteConfirm.categoryName}"?`}
         confirmText="Delete"

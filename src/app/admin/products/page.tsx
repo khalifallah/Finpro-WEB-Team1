@@ -33,6 +33,8 @@ export default function ProductPage() {
     productName?: string;
   }>({ isOpen: false });
 
+  const [error, setError] = useState<string | null>(null);
+
   const fetchProducts = async (page: number = 1, search: string = '') => {
     try {
       setLoading(true);
@@ -75,11 +77,26 @@ export default function ProductPage() {
   const handleDelete = async (productId: number) => {
     try {
       setLoading(true);
+      
+      // Show loading state
+      console.log(`Deleting product ${productId}...`);
+      
       await productService.deleteProduct(productId);
-      fetchProducts(pagination.page, searchQuery);
+      
+      // Refresh list
+      await fetchProducts(pagination.page, searchQuery);
       setDeleteConfirm({ isOpen: false });
-    } catch (error) {
+      
+      // Optional: Show success message
+      console.log('Product deleted successfully');
+    } catch (error: any) {
       console.error('Failed to delete product:', error);
+      setError(error.message || 'Failed to delete product');
+      
+      // Don't close dialog on error, let user see the error
+      setTimeout(() => {
+        setDeleteConfirm({ isOpen: false });
+      }, 2000);
     } finally {
       setLoading(false);
     }
@@ -101,12 +118,22 @@ export default function ProductPage() {
         </Link>
       </div>
 
+      {/* Error Alert */}
+      {error && (
+        <div className="alert alert-error gap-3 rounded-lg border border-red-300 bg-red-50">
+          <svg className="stroke-current shrink-0 h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-sm font-medium">{error}</span>
+        </div>
+      )}
+
       {/* Search */}
       <div className="bg-gray-100 p-4 rounded-lg shadow-sm border border-gray-300">
         <SearchBar value={searchQuery} onChange={handleSearch} placeholder="Search products..." />
       </div>
 
-      {/* Table - Menggunakan AdminProductList Component */}
+      {/* Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         {products.length > 0 && (
           <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
@@ -139,12 +166,18 @@ export default function ProductPage() {
       <ConfirmDialog
         isOpen={deleteConfirm.isOpen}
         onClose={() => setDeleteConfirm({ isOpen: false })}
-        onConfirm={() => deleteConfirm.productId && handleDelete(deleteConfirm.productId)}
+        onConfirm={() => {
+          // ✅ FIX: Ensure it returns Promise<void> or void
+          if (deleteConfirm.productId) {
+            return handleDelete(deleteConfirm.productId);
+          }
+        }}
         title="Delete Product"
-        message={`Delete "${deleteConfirm.productName}"?`}
+        message={`Are you sure you want to delete "${deleteConfirm.productName}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
+        loading={loading}
       />
     </div>
   );
