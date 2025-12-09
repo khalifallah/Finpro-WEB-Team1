@@ -36,16 +36,16 @@ interface StockJournal {
 export default function StocksPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  // ✅ FIX: Use user?.store?.id instead of user?.storeId
-  const userStoreId = user?.store?.id;
+  
+  // Robust: Get store ID from multiple possible locations
+  const userStoreId = user?.store?.id || user?.storeId || undefined;
+
 
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedStore, setSelectedStore] = useState<number | null>(
-    isSuperAdmin ? null : userStoreId || null
-  );
+  const [selectedStore, setSelectedStore] = useState<number | null>(null);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -81,7 +81,9 @@ export default function StocksPage() {
         headers: getAuthHeaders(),
       });
       const data = await response.json();
-      setStores(data.stores || data.data || data || []);
+      const storesList = data.stores || data.data || data || [];
+      console.log('🏪 Stores loaded:', storesList.length);
+      setStores(storesList);
     } catch (error) {
       console.error('Failed to fetch stores:', error);
     }
@@ -95,6 +97,7 @@ export default function StocksPage() {
       });
       const data = await response.json();
       const productsList = data.products || data.data || data || [];
+      console.log('📦 Products loaded:', productsList.length);
       setProducts(productsList);
     } catch (error) {
       console.error('Failed to fetch products:', error);
@@ -110,7 +113,8 @@ export default function StocksPage() {
         limit: String(pagination.limit),
       });
 
-      const storeIdToUse = selectedStore || userStoreId;
+      // For Store Admin, always use their store
+      const storeIdToUse = isSuperAdmin ? selectedStore : userStoreId;
       if (storeIdToUse) params.append('storeId', String(storeIdToUse));
 
       const response = await fetch(`${getApiUrl()}/stocks?${params}`, {
@@ -155,91 +159,62 @@ export default function StocksPage() {
     productId: number,
     storeId: number,
     quantity: number
-  ): Promise<void> => {  // ✅ FIX: Change return type to void
-    try {
-      console.log('📝 Creating stock...', { productId, storeId, quantity });
+  ): Promise<void> => {
+    console.log('📝 Creating stock...', { productId, storeId, quantity });
 
-      // Validate inputs
-      if (!productId || !storeId || !quantity) {
-        throw new Error('All fields are required');
-      }
-
-      if (quantity <= 0) {
-        throw new Error('Quantity must be greater than 0');
-      }
-
-      const response = await fetch(`${getApiUrl()}/stocks`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify({
-          productId,      // ← Integer
-          storeId,        // ← Integer
-          quantity,       // ← Integer (initial quantity)
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('❌ Create stock failed:', errorData);
-        
-        const errorMessage = errorData.error || 
-                           errorData.message || 
-                           `HTTP ${response.status}`;
-        throw new Error(errorMessage);
-      }
-
-      console.log('✅ Stock created successfully');
-      await fetchStocks(1);
-      // ✅ FIX: Don't return anything - just let it complete
-    } catch (err: any) {
-      console.error('Error creating stock:', err);
-      throw new Error(err.message || 'Failed to create stock');
+    if (!productId || !storeId || !quantity) {
+      throw new Error('All fields are required');
     }
+
+    if (quantity <= 0) {
+      throw new Error('Quantity must be greater than 0');
+    }
+
+    const response = await fetch(`${getApiUrl()}/stocks`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ productId, storeId, quantity }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ Create stock failed:', errorData);
+      throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+    }
+
+    console.log('✅ Stock created successfully');
+    setCreateModal(false); // ✅ Close modal on success
+    await fetchStocks(1);
   };
 
-  // Update stock - ✅ FIX: Send correct payload
+  // Update stock
   const handleUpdateStock = async (
     stockId: number,
     quantityChange: number,
     reason: string
-  ): Promise<void> => {  // ✅ FIX: Change return type to void
-    try {
-      console.log('📝 Updating stock...', { stockId, quantityChange, reason });
+  ): Promise<void> => {
+    console.log('📝 Updating stock...', { stockId, quantityChange, reason });
 
-      // Backend expects: PUT /stocks/:id with { quantityChange, reason }
-      const response = await fetch(`${getApiUrl()}/stocks/${stockId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-        // ✅ Send quantityChange (not direct quantity)
-        body: JSON.stringify({
-          quantityChange, // ← This is the change amount
-          reason,
-        }),
-      });
+    const response = await fetch(`${getApiUrl()}/stocks/${stockId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ quantityChange, reason }),
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('❌ Update stock failed:', errorData);
-        
-        const errorMessage = errorData.error || 
-                           errorData.message || 
-                           `HTTP ${response.status}`;
-        throw new Error(errorMessage);
-      }
-
-      console.log('✅ Stock updated successfully');
-      await fetchStocks(pagination.page);
-      // ✅ FIX: Don't return anything - just let it complete
-    } catch (err: any) {
-      console.error('Error updating stock:', err);
-      throw new Error(err.message || 'Failed to update stock');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ Update stock failed:', errorData);
+      throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
     }
+
+    console.log('✅ Stock updated successfully');
+    await fetchStocks(pagination.page);
   };
 
   useEffect(() => {
@@ -250,6 +225,9 @@ export default function StocksPage() {
   useEffect(() => {
     fetchStocks(1);
   }, [selectedStore, userStoreId]);
+
+  // Get effective store ID for create modal
+  const effectiveStoreId = isSuperAdmin ? undefined : userStoreId;
 
   return (
     <div className="space-y-6">
@@ -300,18 +278,8 @@ export default function StocksPage() {
       {/* Store Admin Notice */}
       {!isSuperAdmin && (
         <div className="alert alert-info">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            className="stroke-current shrink-0 w-6 h-6"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>You are viewing stocks for your assigned store only.</span>
         </div>
@@ -362,7 +330,7 @@ export default function StocksPage() {
         isOpen={createModal}
         products={products}
         stores={stores}
-        userStoreId={userStoreId}
+        userStoreId={effectiveStoreId}
         isSuperAdmin={isSuperAdmin}
         onClose={() => setCreateModal(false)}
         onSubmit={handleCreateStock}
