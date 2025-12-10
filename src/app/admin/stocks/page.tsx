@@ -281,14 +281,14 @@ export default function StocksPage() {
         <div className="bg-white p-4 rounded-lg shadow-sm border">
           <div className="form-control w-full max-w-xs">
             <label className="label">
-              <span className="label-text font-semibold">Filter by Store</span>
+              <span className="label-text font-semibold text-gray-900">Filter by Store</span>
             </label>
             <select
               value={selectedStore || ''}
               onChange={(e) =>
                 setSelectedStore(e.target.value ? parseInt(e.target.value) : null)
               }
-              className="select select-bordered"
+              className="select select-bordered bg-blue-50 text-gray-900"
             >
               <option value="">All Stores</option>
               {stores.map((store) => (
@@ -323,7 +323,6 @@ export default function StocksPage() {
           stocks={stocks}
           loading={loading}
           onUpdate={(stock) => setUpdateModal({ isOpen: true, stock })}
-          onViewHistory={fetchJournals}
         />
 
         {pagination.totalPages > 1 && (

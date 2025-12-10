@@ -1,6 +1,6 @@
 'use client';
 
-import { FiEdit2, FiFileText } from 'react-icons/fi';
+import { FiEdit2 } from 'react-icons/fi';
 
 interface Stock {
   id: number;
@@ -13,20 +13,17 @@ interface StockListProps {
   stocks: Stock[];
   loading: boolean;
   onUpdate: (stock: Stock) => void;
-  onViewHistory: (stockId: number, productName: string) => void;
 }
 
 export default function StockList({
   stocks,
   loading,
   onUpdate,
-  onViewHistory,
 }: StockListProps) {
   if (loading) {
     return (
-      <div className="p-8 text-center">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
-        <p className="mt-2 text-gray-500">Loading stocks...</p>
+      <div className="p-8 flex justify-center">
+        <span className="loading loading-spinner loading-lg"></span>
       </div>
     );
   }
@@ -39,60 +36,44 @@ export default function StockList({
     );
   }
 
-  const getStockBadge = (quantity: number) => {
-    if (quantity === 0) return 'badge-error';
+  const getQuantityBadgeColor = (quantity: number) => {
+    if (quantity <= 0) return 'badge-error';
     if (quantity <= 10) return 'badge-warning';
     return 'badge-success';
   };
 
   return (
     <div className="overflow-x-auto">
-      <table className="table w-full">
-        <thead className="bg-gray-50">
+      <table className="table">
+        <thead className="bg-gray-50 border-b">
           <tr>
-            <th className="w-16">ID</th>
-            <th>Product</th>
-            <th>Store</th>
-            <th className="text-center">Stock</th>
-            <th className="text-right">Actions</th>
+            <th className="text-gray-700">ID</th>
+            <th className="text-gray-700">Product</th>
+            <th className="text-gray-700">Store</th>
+            <th className="text-gray-700">Quantity</th>
+            <th className="text-gray-700">Actions</th>
           </tr>
         </thead>
         <tbody>
           {stocks.map((stock) => (
-            <tr key={stock.id} className="hover:bg-gray-50">
+            <tr key={stock.id} className="hover:bg-gray-50 border-b">
+              <td className="text-gray-500 font-mono">#{stock.id}</td>
+              <td className="text-gray-900 font-medium">{stock.product.name}</td>
+              <td className="text-gray-700">{stock.store.name}</td>
               <td>
-                <span className="font-mono text-xs text-gray-500">#{stock.id}</span>
-              </td>
-              <td>
-                <span className="font-semibold text-gray-900">
-                  {stock.product?.name || '-'}
-                </span>
-              </td>
-              <td>
-                <span className="text-gray-600">{stock.store?.name || '-'}</span>
-              </td>
-              <td className="text-center">
-                <span className={`badge ${getStockBadge(stock.quantity)} gap-1`}>
+                <span className={`badge badge-lg ${getQuantityBadgeColor(stock.quantity)}`}>
                   {stock.quantity} units
                 </span>
               </td>
               <td>
-                <div className="flex gap-2 justify-end">
-                  <button
-                    onClick={() => onViewHistory(stock.id, stock.product?.name)}
-                    className="btn btn-sm btn-ghost text-blue-600"
-                    title="View History"
-                  >
-                    <FiFileText className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => onUpdate(stock)}
-                    className="btn btn-sm btn-primary"
-                    title="Update Stock"
-                  >
-                    <FiEdit2 className="w-4 h-4" />
-                  </button>
-                </div>
+                
+                <button
+                  onClick={() => onUpdate(stock)}
+                  className="btn btn-sm btn-primary gap-1"
+                  title="Edit stock"
+                >
+                  <FiEdit2 className="w-4 h-4" />
+                </button>
               </td>
             </tr>
           ))}
