@@ -37,9 +37,8 @@ export default function StocksPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   
-  // Robust: Get store ID from multiple possible locations
-  const userStoreId = user?.store?.id || user?.storeId || undefined;
-
+  // INGAT! Only use user?.store?.id (not storeId)
+  const userStoreId = user?.store?.id;
 
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
@@ -146,7 +145,7 @@ export default function StocksPage() {
       setJournalModal({
         isOpen: true,
         productName,
-        journals: data.journals || data.data || data || [],
+        journals: data.journals || data.data || [],
       });
     } catch (error) {
       console.error('Failed to fetch journals:', error);

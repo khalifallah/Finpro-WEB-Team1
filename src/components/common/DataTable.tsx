@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { ReactNode } from 'react';
 
 export interface DataTableColumn<T> {
   key: keyof T | string;
   header: string;
-  render?: (value: any, item: T, index: number) => React.ReactNode;
+  render?: (value: any, item: T, index: number) => ReactNode;
   className?: string;
   width?: string;
 }
@@ -18,6 +18,29 @@ interface DataTableProps<T> {
   striped?: boolean;
   hoverEffect?: boolean;
   onRowClick?: (item: T) => void;
+}
+
+// ✅ FIX: Helper function to safely render content
+function renderCellContent(content: unknown): ReactNode {
+  if (content === null || content === undefined) {
+    return '-';
+  }
+  if (React.isValidElement(content)) {
+    return content;
+  }
+  if (typeof content === 'string' || typeof content === 'number' || typeof content === 'boolean') {
+    return String(content);
+  }
+  if (typeof content === 'bigint') {
+    return content.toString();
+  }
+  if (Array.isArray(content)) {
+    return content.join(', ');
+  }
+  if (typeof content === 'object') {
+    return JSON.stringify(content);
+  }
+  return '-';
 }
 
 export default function DataTable<T extends { id?: number | string }>({
@@ -82,7 +105,7 @@ export default function DataTable<T extends { id?: number | string }>({
         <tbody>
           {data.map((item, rowIndex) => (
             <tr
-              key={item.id || rowIndex}
+              key={item.id ?? rowIndex}
               onClick={() => onRowClick?.(item)}
               className={`border-b border-gray-200 transition-colors ${
                 hoverEffect ? 'hover:bg-blue-50' : ''
@@ -92,9 +115,10 @@ export default function DataTable<T extends { id?: number | string }>({
             >
               {columns.map((col, colIndex) => {
                 const value = item[col.key as keyof T];
+                // Use render function if provided, otherwise safely render content
                 const content = col.render
                   ? col.render(value, item, rowIndex)
-                  : value;
+                  : renderCellContent(value);
 
                 return (
                   <td
