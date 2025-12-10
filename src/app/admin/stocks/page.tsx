@@ -80,11 +80,25 @@ export default function StocksPage() {
         headers: getAuthHeaders(),
       });
       const data = await response.json();
-      const storesList = data.stores || data.data || data || [];
-      console.log('🏪 Stores loaded:', storesList.length);
+      
+      // ✅ Defensive parsing - handle berbagai format response
+      let storesList = [];
+      if (Array.isArray(data)) {
+        storesList = data;
+      } else if (Array.isArray(data.stores)) {
+        storesList = data.stores;
+      } else if (Array.isArray(data.data)) {
+        storesList = data.data;
+      } else if (data.stores && typeof data.stores === 'object') {
+        // Jika object, convert ke array
+        storesList = Object.values(data.stores);
+      }
+      
+      console.log('🏪 Stores loaded:', storesList.length, storesList);
       setStores(storesList);
     } catch (error) {
       console.error('Failed to fetch stores:', error);
+      setStores([]); // ✅ Default to empty array on error
     }
   };
 
@@ -95,11 +109,24 @@ export default function StocksPage() {
         headers: getAuthHeaders(),
       });
       const data = await response.json();
-      const productsList = data.products || data.data || data || [];
-      console.log('📦 Products loaded:', productsList.length);
+      
+      // ✅ Defensive parsing
+      let productsList = [];
+      if (Array.isArray(data)) {
+        productsList = data;
+      } else if (Array.isArray(data.products)) {
+        productsList = data.products;
+      } else if (Array.isArray(data.data)) {
+        productsList = data.data;
+      } else if (data.products && typeof data.products === 'object') {
+        productsList = Object.values(data.products);
+      }
+      
+      console.log('📦 Products loaded:', productsList.length, productsList);
       setProducts(productsList);
     } catch (error) {
       console.error('Failed to fetch products:', error);
+      setProducts([]); // ✅ Default to empty array on error
     }
   };
 

@@ -57,10 +57,28 @@ export default function ReportsPage() {
       const response = await fetch(`${getApiUrl()}/stores`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
-        setStores(data.stores || data.data || []);
+        
+        // ✅ Defensive parsing - handle berbagai format response
+        let storesList: Store[] = [];
+        if (Array.isArray(data)) {
+          storesList = data;
+        } else if (Array.isArray(data.stores)) {
+          storesList = data.stores;
+        } else if (Array.isArray(data.data)) {
+          storesList = data.data;
+        } else if (data.stores && typeof data.stores === 'object') {
+          // Jika object (bukan array), convert ke array
+          storesList = Object.values(data.stores).filter(
+            (item): item is Store => item !== null && typeof item === 'object'
+          );
+        }
+        
+        console.log('🏪 Stores loaded:', storesList.length, storesList);
+        setStores(storesList);
       }
     } catch (error) {
       console.error('Failed to fetch stores:', error);
+      setStores([]); // ✅ Default ke empty array
     }
   }, [isSuperAdmin, getAuthHeaders]);
 
