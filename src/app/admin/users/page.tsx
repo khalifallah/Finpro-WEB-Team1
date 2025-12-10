@@ -81,24 +81,81 @@ export default function UsersPage() {
   const fetchStores = async () => {
     try {
       const token = localStorage.getItem('token');
-      const url = `${getApiUrl()}/stores`;
+      
+      // ✅ Use admin endpoint instead of /stores
+      const url = `${getApiUrl()}/admin/stores`;
+      
+      console.log('📡 Fetching stores from:', url);
+      
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
+      if (!response.ok) {
+        console.error('❌ Stores fetch failed:', response.status);
+        // Fallback to /stores endpoint
+        return fetchStoresFallback();
+      }
+      
       const data = await response.json();
+      console.log('📦 Stores raw data:', data);
 
       let storesList: Store[] = [];
-      if (data.data && Array.isArray(data.data)) {
-        storesList = data.data;
+      
+      // Handle response wrapper
+      if (data.data && typeof data.data === 'object') {
+        if (Array.isArray(data.data.stores)) {
+          storesList = data.data.stores;
+        } else if (Array.isArray(data.data)) {
+          storesList = data.data;
+        }
       } else if (Array.isArray(data.stores)) {
         storesList = data.stores;
       } else if (Array.isArray(data)) {
         storesList = data;
       }
 
+      console.log('✅ Stores parsed:', storesList.length);
       setStores(storesList);
     } catch (error) {
-      console.error('Failed to fetch stores:', error);
+      console.error('❌ Failed to fetch stores:', error);
+      fetchStoresFallback();
+    }
+  };
+
+  // Fallback jika admin/stores tidak ada
+  const fetchStoresFallback = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const url = `${getApiUrl()}/stores`;
+      
+      console.log('📡 Fallback: Fetching stores from:', url);
+      
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const data = await response.json();
+      console.log('📦 Fallback stores data:', data);
+
+      let storesList: Store[] = [];
+      
+      if (data.data && typeof data.data === 'object') {
+        if (Array.isArray(data.data.stores)) {
+          storesList = data.data.stores;
+        } else if (Array.isArray(data.data)) {
+          storesList = data.data;
+        }
+      } else if (Array.isArray(data.stores)) {
+        storesList = data.stores;
+      } else if (Array.isArray(data)) {
+        storesList = data;
+      }
+
+      console.log('✅ Fallback stores parsed:', storesList.length);
+      setStores(storesList);
+    } catch (error) {
+      console.error('❌ Fallback also failed:', error);
       setStores([]);
     }
   };
