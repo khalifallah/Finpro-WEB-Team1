@@ -306,6 +306,12 @@ const Navbar: React.FC<NavbarProps> = ({
                     <li>
                       <Link href="/profile">My Profile</Link>
                     </li>
+                    {/* ✅ ADD THIS - Admin Dashboard Link */}
+                    {user?.role === 'SUPER_ADMIN' || user?.role === 'STORE_ADMIN' ? (
+                      <li>
+                        <Link href="/admin/dashboard">Admin Dashboard</Link>
+                      </li>
+                    ) : null}
                     <li>
                       <Link href="/orders">My Orders</Link>
                     </li>
