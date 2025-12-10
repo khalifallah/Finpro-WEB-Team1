@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,8 +17,8 @@ const MENU_ITEMS = [
 ] as const;
 
 // Icon component
-const MenuIcon = ({ name, className = 'w-5 h-5' }: { name: string; className?: string }) => {
-  const icons: Record<string, JSX.Element> = {
+const MenuIcon = ({ name, className = 'w-5 h-5' }: { name: string; className?: string }): React.ReactNode => {
+  const icons: Record<string, React.ReactElement> = {
     dashboard: (
       <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -157,32 +157,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {MENU_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setSidebarOpen(false)}
-              className={`
-                flex items-center gap-3 px-4 py-3 rounded-xl
-                transition-all duration-200 group
-                ${isActive(item.href)
-                  ? 'bg-primary text-white shadow-lg shadow-primary/25'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                }
-              `}
-            >
-              <MenuIcon 
-                name={item.icon} 
-                className={`w-5 h-5 transition-transform group-hover:scale-110 ${
-                  isActive(item.href) ? 'text-white' : ''
-                }`} 
-              />
-              <span className="font-medium">{item.label}</span>
-              {isActive(item.href) && (
-                <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full" />
-              )}
-            </Link>
-          ))}
+          {MENU_ITEMS.map((item) => {
+            // Hide Users menu untuk non-SUPER_ADMIN
+            if (item.href === '/admin/users' && role !== 'SUPER_ADMIN') {
+              return null;
+            }
+            
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className={`
+                  flex items-center gap-3 px-4 py-3 rounded-xl
+                  transition-all duration-200 group
+                  ${isActive(item.href)
+                    ? 'bg-primary text-white shadow-lg shadow-primary/25'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  }
+                `}
+              >
+                <MenuIcon 
+                  name={item.icon} 
+                  className={`w-5 h-5 transition-transform group-hover:scale-110 ${
+                    isActive(item.href) ? 'text-white' : ''
+                  }`} 
+                />
+                <span className="font-medium">{item.label}</span>
+                {isActive(item.href) && (
+                  <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full" />
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* User Section */}
