@@ -5,7 +5,7 @@ import Link from 'next/link';
 import SearchBar from '@/components/common/SearchBar';
 import Pagination from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
-import AdminProductList from '@/components/admin/AdminProductList'; // ← IMPORT COMPONENT BARU
+import AdminProductList from '@/components/admin/AdminProductList';
 import { ProductResponse } from '@/types/product.types';
 import { productService } from '@/services/productService';
 
@@ -44,19 +44,46 @@ export default function ProductPage() {
         search: search || undefined,
       });
 
-      let productsData: ProductResponse[] = [];
-      let paginationData = { page, limit: pagination.limit, total: 0, totalPages: 0 };
+      console.log('📦 Products API Response:', response); // Debug
 
+      let productsData: ProductResponse[] = [];
+      let total = 0;
+      let totalPages = 0;
+
+      // ✅ Handle response formats
       if (response?.products && Array.isArray(response.products)) {
         productsData = response.products;
-        paginationData = { page: response.pagination?.page || page, ...response.pagination };
+        
+        // Check pagination in different locations
+        if (response.pagination) {
+          total = response.pagination.total || productsData.length;
+          totalPages = response.pagination.totalPages || 1;
+        } else if (response.total !== undefined) {
+          total = response.total;
+          totalPages = response.totalPages || Math.ceil(total / pagination.limit);
+        } else {
+          total = productsData.length;
+          totalPages = 1;
+        }
+      } else if (response?.data && Array.isArray(response.data)) {
+        productsData = response.data;
+        total = response.total || productsData.length;
+        totalPages = response.totalPages || Math.ceil(total / pagination.limit);
       } else if (Array.isArray(response)) {
         productsData = response;
-        paginationData = { page, limit: pagination.limit, total: response.length, totalPages: 1 };
+        total = response.length;
+        totalPages = 1;
       }
 
+      console.log('✅ Parsed:', { count: productsData.length, total, totalPages });
+
       setProducts(productsData);
-      setPagination(paginationData);
+      setPagination({
+        page,
+        limit: pagination.limit,
+        total,
+        totalPages,
+      });
     } catch (error) {
       console.error('Failed to fetch products:', error);
       setProducts([]);
@@ -77,29 +104,20 @@ export default function ProductPage() {
   const handleDelete = async (productId: number) => {
     try {
       setLoading(true);
-      
-      // Show loading state
-      console.log(`Deleting product ${productId}...`);
-      
       await productService.deleteProduct(productId);
-      
-      // Refresh list
       await fetchProducts(pagination.page, searchQuery);
       setDeleteConfirm({ isOpen: false });
-      
-      // Optional: Show success message
-      console.log('Product deleted successfully');
     } catch (error: any) {
       console.error('Failed to delete product:', error);
       setError(error.message || 'Failed to delete product');
-      
-      // Don't close dialog on error, let user see the error
-      setTimeout(() => {
-        setDeleteConfirm({ isOpen: false });
-      }, 2000);
+      setTimeout(() => setDeleteConfirm({ isOpen: false }), 2000);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (page: number) => {
+    fetchProducts(page, searchQuery);
   };
 
   return (
@@ -138,7 +156,7 @@ export default function ProductPage() {
         {products.length > 0 && (
           <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
             <p className="text-sm text-gray-600 font-medium">
-              Showing {products.length} of {pagination.total} products
+              Showing {(pagination.page - 1) * pagination.limit + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} products
             </p>
           </div>
         )}
@@ -151,12 +169,13 @@ export default function ProductPage() {
           }
         />
 
+        {/* ✅ Pagination */}
         {pagination.totalPages > 1 && (
           <div className="p-4 border-t border-gray-200 bg-gray-50">
             <Pagination
               currentPage={pagination.page}
               totalPages={pagination.totalPages}
-              onPageChange={(page) => fetchProducts(page, searchQuery)}
+              onPageChange={handlePageChange}
             />
           </div>
         )}
@@ -167,7 +186,6 @@ export default function ProductPage() {
         isOpen={deleteConfirm.isOpen}
         onClose={() => setDeleteConfirm({ isOpen: false })}
         onConfirm={() => {
-          // ✅ FIX: Ensure it returns Promise<void> or void
           if (deleteConfirm.productId) {
             return handleDelete(deleteConfirm.productId);
           }
