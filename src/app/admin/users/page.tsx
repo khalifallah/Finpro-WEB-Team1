@@ -506,13 +506,13 @@ export default function UsersPage() {
 
           <div>
             <label className="label">
-              <span className="label-text font-medium">Email</span>
+              <span className="label-text font-medium text-gray-900">Email</span>
             </label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="input input-bordered w-full"
+              className="input input-bordered w-full text-gray-900 bg-white"
               placeholder="user@example.com"
               disabled={formModal.mode === 'edit'}
             />
@@ -520,20 +520,20 @@ export default function UsersPage() {
 
           <div>
             <label className="label">
-              <span className="label-text font-medium">Full Name</span>
+              <span className="label-text font-medium text-gray-900">Full Name</span>
             </label>
             <input
               type="text"
               value={formData.fullName}
               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              className="input input-bordered w-full"
+              className="input input-bordered w-full text-gray-900 bg-white"
               placeholder="John Doe"
             />
           </div>
 
           <div>
             <label className="label">
-              <span className="label-text font-medium">
+              <span className="label-text font-medium text-gray-900">
                 Password {formModal.mode === 'edit' && '(Leave blank to keep current)'}
               </span>
             </label>
@@ -541,19 +541,19 @@ export default function UsersPage() {
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="input input-bordered w-full"
+              className="input input-bordered w-full text-gray-900 bg-white"
               placeholder={formModal.mode === 'create' ? 'Enter password' : 'Optional'}
             />
           </div>
 
           <div>
             <label className="label">
-              <span className="label-text font-medium">Role</span>
+              <span className="label-text font-medium text-gray-900">Role</span>
             </label>
             <select
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value as 'STORE_ADMIN' | 'SUPER_ADMIN' })}
-              className="select select-bordered w-full"
+              className="select select-bordered w-full text-gray-900 bg-white"
             >
               <option value="STORE_ADMIN">Store Admin</option>
               <option value="SUPER_ADMIN">Super Admin</option>
@@ -563,12 +563,12 @@ export default function UsersPage() {
           {formData.role === 'STORE_ADMIN' && (
             <div>
               <label className="label">
-                <span className="label-text font-medium">Store</span>
+                <span className="label-text font-medium text-gray-900">Store</span>
               </label>
               <select
                 value={formData.storeId}
                 onChange={(e) => setFormData({ ...formData, storeId: e.target.value })}
-                className="select select-bordered w-full"
+                className="select select-bordered w-full text-gray-900 bg-white"
               >
                 <option value="">Select a store</option>
                 {stores.map((store) => (
