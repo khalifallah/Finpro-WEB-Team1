@@ -53,8 +53,28 @@ export default function DiscountsPage() {
       const res = await fetch(`${getApiUrl()}/stores`, { headers: getAuthHeaders() });
       if (!res.ok) return;
       const data = await res.json();
-      setStores(data.stores || data.data || []);
-    } catch (e) { console.error('Failed to fetch stores:', e); }
+      
+      // ✅ Defensive parsing - handle berbagai format response
+      let storesList: Store[] = [];
+      if (Array.isArray(data)) {
+        storesList = data;
+      } else if (Array.isArray(data.stores)) {
+        storesList = data.stores;
+      } else if (Array.isArray(data.data)) {
+        storesList = data.data;
+      } else if (data.stores && typeof data.stores === 'object') {
+        // Jika object (bukan array), convert ke array
+        storesList = Object.values(data.stores).filter(
+          (item): item is Store => item !== null && typeof item === 'object'
+        );
+      }
+      
+      console.log('🏪 Stores loaded:', storesList.length, storesList);
+      setStores(storesList);
+    } catch (e) { 
+      console.error('Failed to fetch stores:', e);
+      setStores([]); // ✅ Default ke empty array
+    }
   }, [getAuthHeaders, isSuperAdmin, userStoreId, userStoreName]);
 
   const fetchProducts = useCallback(async () => {

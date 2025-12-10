@@ -183,7 +183,7 @@ export default function DashboardPage() {
           {/* User Management Card - Super Admin Only */}
           {isSuperAdmin && (
             <div className="card bg-white shadow-md md:col-span-2">
-              <div className="card-body">
+              <div className="card-body text-black">
                 <h3 className="card-title">
                   👥 User Management
                   <span className="badge badge-warning ml-2">Super Admin Only</span>
