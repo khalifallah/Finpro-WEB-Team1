@@ -3,11 +3,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import Table from '@/components/common/Table';
 import SearchBar from '@/components/common/SearchBar';
 import Pagination from '@/components/common/Pagination';
-import ConfirmDialog from '@/components/common/ConfirmDialog';
-import Modal from '@/components/common/Modal';
+import UserFormModal from '@/components/forms/UserFormModal';
+import UserDeleteDialog from '@/components/forms/UserDeleteDialog';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface User {
@@ -31,7 +30,14 @@ export default function UsersPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
-  // Redirect if not super admin
+  const getApiUrl = () => {
+    if (typeof window !== 'undefined') {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+      return baseUrl ? baseUrl.replace(/\/$/, '') : 'http://localhost:8000/api';
+    }
+    return 'http://localhost:8000/api';
+  };
+
   useEffect(() => {
     if (user && !isSuperAdmin) {
       router.push('/admin/dashboard');
@@ -72,21 +78,88 @@ export default function UsersPage() {
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
 
-  // Fetch stores
   const fetchStores = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores`, {
+      
+      // ✅ Use admin endpoint instead of /stores
+      const url = `${getApiUrl()}/admin/stores`;
+      
+      console.log('📡 Fetching stores from:', url);
+      
+      const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
+      if (!response.ok) {
+        console.error('❌ Stores fetch failed:', response.status);
+        // Fallback to /stores endpoint
+        return fetchStoresFallback();
+      }
+      
       const data = await response.json();
-      setStores(data.stores || data || []);
+      console.log('📦 Stores raw data:', data);
+
+      let storesList: Store[] = [];
+      
+      // Handle response wrapper
+      if (data.data && typeof data.data === 'object') {
+        if (Array.isArray(data.data.stores)) {
+          storesList = data.data.stores;
+        } else if (Array.isArray(data.data)) {
+          storesList = data.data;
+        }
+      } else if (Array.isArray(data.stores)) {
+        storesList = data.stores;
+      } else if (Array.isArray(data)) {
+        storesList = data;
+      }
+
+      console.log('✅ Stores parsed:', storesList.length);
+      setStores(storesList);
     } catch (error) {
-      console.error('Failed to fetch stores:', error);
+      console.error('❌ Failed to fetch stores:', error);
+      fetchStoresFallback();
     }
   };
 
-  // Fetch users
+  // Fallback jika admin/stores tidak ada
+  const fetchStoresFallback = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const url = `${getApiUrl()}/stores`;
+      
+      console.log('📡 Fallback: Fetching stores from:', url);
+      
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const data = await response.json();
+      console.log('📦 Fallback stores data:', data);
+
+      let storesList: Store[] = [];
+      
+      if (data.data && typeof data.data === 'object') {
+        if (Array.isArray(data.data.stores)) {
+          storesList = data.data.stores;
+        } else if (Array.isArray(data.data)) {
+          storesList = data.data;
+        }
+      } else if (Array.isArray(data.stores)) {
+        storesList = data.stores;
+      } else if (Array.isArray(data)) {
+        storesList = data;
+      }
+
+      console.log('✅ Fallback stores parsed:', storesList.length);
+      setStores(storesList);
+    } catch (error) {
+      console.error('❌ Fallback also failed:', error);
+      setStores([]);
+    }
+  };
+
   const fetchUsers = async (page: number = 1, search: string = '') => {
     try {
       setLoading(true);
@@ -98,23 +171,41 @@ export default function UsersPage() {
       if (search) params.append('search', search);
       if (roleFilter) params.append('role', roleFilter);
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users?${params}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const url = `${getApiUrl()}/admin/users?${params}`;
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+
       const data = await response.json();
 
-      setUsers(data.users || data.data || []);
-      setPagination({
-        page: data.page || page,
-        limit: data.limit || 10,
-        total: data.total || 0,
-        totalPages: Math.ceil((data.total || 0) / (data.limit || 10)),
-      });
+      let usersList = [];
+      let totalUsers = 0;
+      let pageNum = page;
+      let limitNum = pagination.limit;
+      let totalPages = 0;
+
+      if (data.data && typeof data.data === 'object') {
+        const dataPayload = data.data;
+        usersList = Array.isArray(dataPayload.users) ? dataPayload.users : [];
+        totalUsers = dataPayload.total || 0;
+        pageNum = dataPayload.page || page;
+        limitNum = dataPayload.limit || pagination.limit;
+        totalPages = dataPayload.totalPages || Math.ceil(totalUsers / limitNum);
+      } else if (Array.isArray(data.users)) {
+        usersList = data.users;
+        totalUsers = data.total || 0;
+        pageNum = data.page || page;
+        limitNum = data.limit || pagination.limit;
+        totalPages = data.totalPages || Math.ceil(totalUsers / limitNum);
+      }
+
+      setUsers(usersList);
+      setPagination({ page: pageNum, limit: limitNum, total: totalUsers, totalPages });
     } catch (error) {
       console.error('Failed to fetch users:', error);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -139,13 +230,7 @@ export default function UsersPage() {
   };
 
   const handleCreate = () => {
-    setFormData({
-      email: '',
-      fullName: '',
-      password: '',
-      role: 'STORE_ADMIN',
-      storeId: '',
-    });
+    setFormData({ email: '', fullName: '', password: '', role: 'STORE_ADMIN', storeId: '' });
     setFormError('');
     setFormModal({ isOpen: true, mode: 'create' });
   };
@@ -162,30 +247,23 @@ export default function UsersPage() {
     setFormModal({ isOpen: true, mode: 'edit', user: editUser });
   };
 
+  const handleFormChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (formError) setFormError('');
+  };
+
   const handleSubmit = async () => {
-    if (!formData.email.trim()) {
-      setFormError('Email is required');
-      return;
-    }
-    if (!formData.fullName.trim()) {
-      setFormError('Full name is required');
-      return;
-    }
-    if (formModal.mode === 'create' && !formData.password) {
-      setFormError('Password is required');
-      return;
-    }
-    if (formData.role === 'STORE_ADMIN' && !formData.storeId) {
-      setFormError('Store is required for Store Admin');
-      return;
-    }
+    if (!formData.email.trim()) return setFormError('Email is required');
+    if (!formData.fullName.trim()) return setFormError('Full name is required');
+    if (formModal.mode === 'create' && !formData.password) return setFormError('Password is required');
+    if (formData.role === 'STORE_ADMIN' && !formData.storeId) return setFormError('Store is required for Store Admin');
 
     try {
       setFormLoading(true);
       const token = localStorage.getItem('token');
       const url = formModal.mode === 'create'
-        ? `${process.env.NEXT_PUBLIC_API_URL}/users/admin`
-        : `${process.env.NEXT_PUBLIC_API_URL}/users/${formModal.user?.id}`;
+        ? `${getApiUrl()}/admin/store-admins`
+        : `${getApiUrl()}/admin/users/${formModal.user?.id}`;
 
       const payload: any = {
         email: formData.email,
@@ -193,23 +271,17 @@ export default function UsersPage() {
         role: formData.role,
         storeId: formData.storeId ? parseInt(formData.storeId) : null,
       };
-
-      if (formData.password) {
-        payload.password = formData.password;
-      }
+      if (formData.password) payload.password = formData.password;
 
       const response = await fetch(url, {
         method: formModal.mode === 'create' ? 'POST' : 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || error.error || 'Failed to save user');
+        throw new Error(error.message || 'Failed to save user');
       }
 
       setFormModal({ isOpen: false, mode: 'create' });
@@ -221,58 +293,36 @@ export default function UsersPage() {
     }
   };
 
-  const handleDelete = async (userId: number) => {
+  const handleDelete = async () => {
+    if (!deleteConfirm.userId) return;
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`,
-        {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to delete user');
-      }
-
+      const response = await fetch(`${getApiUrl()}/admin/users/${deleteConfirm.userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('Failed to delete user');
       setDeleteConfirm({ isOpen: false });
       fetchUsers(pagination.page, searchQuery);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to delete user:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Show nothing while checking auth
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
-  // Show nothing if not super admin (redirect happening in useEffect)
   if (!isSuperAdmin) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
-          <div className="mb-6">
-            <svg className="w-24 h-24 mx-auto text-red-500 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 9v2m0 4v2m-6-4a9 9 0 1118 0 9 9 0 01-18 0z" />
-            </svg>
-          </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">403 - Access Denied</h1>
           <p className="text-gray-600 text-lg mb-6">
             🔐 User Management is restricted to <span className="font-bold text-red-600">Super Admin</span> only
           </p>
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 inline-block">
-            <p className="text-red-700 text-sm">
-              Your role: <span className="font-semibold">{user.role?.replace('_', ' ')}</span>
-            </p>
-          </div>
-          <Link href="/admin/dashboard" className="btn btn-primary">
-            ← Back to Dashboard
-          </Link>
+          <Link href="/admin/dashboard" className="btn btn-primary">← Back to Dashboard</Link>
         </div>
       </div>
     );
@@ -286,10 +336,7 @@ export default function UsersPage() {
           <h1 className="text-3xl font-bold text-black">👥 User Management</h1>
           <p className="text-black mt-2 text-sm">Manage system users and store admin accounts</p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="btn btn-primary gap-2"
-        >
+        <button onClick={handleCreate} className="btn btn-primary gap-2">
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
           </svg>
@@ -299,13 +346,7 @@ export default function UsersPage() {
 
       {/* Search & Filter */}
       <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 space-y-4">
-        <div>
-          <SearchBar
-            value={searchQuery}
-            onChange={handleSearch}
-            placeholder="Search by email or name..."
-          />
-        </div>
+        <SearchBar value={searchQuery} onChange={handleSearch} placeholder="Search by email or name..." />
         <div>
           <label className="label">
             <span className="label-text font-medium text-gray-700">Filter by Role</span>
@@ -313,11 +354,12 @@ export default function UsersPage() {
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="select select-bordered w-full"
+            className="select select-bordered w-full bg-white text-gray-900"
           >
             <option value="">All Roles</option>
             <option value="SUPER_ADMIN">Super Admin</option>
             <option value="STORE_ADMIN">Store Admin</option>
+            <option value="USER">User</option>
           </select>
         </div>
       </div>
@@ -348,7 +390,7 @@ export default function UsersPage() {
                       <td className="text-gray-900 font-medium">{usr.email}</td>
                       <td className="text-gray-700">{usr.fullName}</td>
                       <td>
-                        <span className={`badge ${usr.role === 'SUPER_ADMIN' ? 'badge-warning' : 'badge-info'}`}>
+                        <span className={`badge ${usr.role === 'SUPER_ADMIN' ? 'badge-warning' : usr.role === 'STORE_ADMIN' ? 'badge-info' : 'badge-secondary'}`}>
                           {usr.role}
                         </span>
                       </td>
@@ -359,34 +401,17 @@ export default function UsersPage() {
                         </span>
                       </td>
                       <td className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(usr)}
-                          className="btn btn-sm btn-ghost"
-                          title="Edit user"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm({ isOpen: true, userId: usr.id, userName: usr.fullName })}
-                          className="btn btn-sm btn-ghost text-error"
-                          title="Delete user"
-                        >
-                          🗑️
-                        </button>
+                        <button onClick={() => handleEdit(usr)} className="btn btn-sm btn-ghost" title="Edit">✏️</button>
+                        <button onClick={() => setDeleteConfirm({ isOpen: true, userId: usr.id, userName: usr.fullName })} className="btn btn-sm btn-ghost text-error" title="Delete">🗑️</button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-
             {pagination.totalPages > 1 && (
               <div className="p-4 border-t border-gray-200 bg-gray-50">
-                <Pagination
-                  currentPage={pagination.page}
-                  totalPages={pagination.totalPages}
-                  onPageChange={(page) => fetchUsers(page, searchQuery)}
-                />
+                <Pagination currentPage={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => fetchUsers(page, searchQuery)} />
               </div>
             )}
           </>
@@ -397,130 +422,25 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Create/Edit Modal */}
-      <Modal
+      {/* ✅ Using Extracted Components */}
+      <UserFormModal
         isOpen={formModal.isOpen}
+        mode={formModal.mode}
+        formData={formData}
+        formError={formError}
+        formLoading={formLoading}
+        stores={stores}
         onClose={() => setFormModal({ isOpen: false, mode: 'create' })}
-        title={formModal.mode === 'create' ? 'Create New User' : 'Edit User'}
-      >
-        <div className="space-y-4">
-          {formError && (
-            <div className="alert alert-error">
-              <svg className="stroke-current shrink-0 h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>{formError}</span>
-            </div>
-          )}
+        onSubmit={handleSubmit}
+        onChange={handleFormChange}
+      />
 
-          <div>
-            <label className="label">
-              <span className="label-text font-medium">Email</span>
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="input input-bordered w-full"
-              placeholder="user@example.com"
-            />
-          </div>
-
-          <div>
-            <label className="label">
-              <span className="label-text font-medium">Full Name</span>
-            </label>
-            <input
-              type="text"
-              value={formData.fullName}
-              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              className="input input-bordered w-full"
-              placeholder="John Doe"
-            />
-          </div>
-
-          <div>
-            <label className="label">
-              <span className="label-text font-medium">
-                Password {formModal.mode === 'edit' && '(Leave blank to keep current)'}
-              </span>
-            </label>
-            <input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="input input-bordered w-full"
-              placeholder={formModal.mode === 'create' ? 'Enter password' : 'Optional'}
-            />
-          </div>
-
-          <div>
-            <label className="label">
-              <span className="label-text font-medium">Role</span>
-            </label>
-            <select
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as 'STORE_ADMIN' | 'SUPER_ADMIN' })}
-              className="select select-bordered w-full"
-            >
-              <option value="STORE_ADMIN">Store Admin</option>
-              <option value="SUPER_ADMIN">Super Admin</option>
-            </select>
-          </div>
-
-          {formData.role === 'STORE_ADMIN' && (
-            <div>
-              <label className="label">
-                <span className="label-text font-medium">Store</span>
-              </label>
-              <select
-                value={formData.storeId}
-                onChange={(e) => setFormData({ ...formData, storeId: e.target.value })}
-                className="select select-bordered w-full"
-              >
-                <option value="">Select a store</option>
-                {stores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="modal-action">
-            <button
-              onClick={() => setFormModal({ isOpen: false, mode: 'create' })}
-              className="btn"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={formLoading}
-              className="btn btn-primary"
-            >
-              {formLoading ? <span className="loading loading-spinner loading-sm"></span> : 'Save'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Delete Confirmation */}
-      <ConfirmDialog
+      <UserDeleteDialog
         isOpen={deleteConfirm.isOpen}
-        onClose={() => setDeleteConfirm({ isOpen: false })}
-        onConfirm={() => {
-          if (deleteConfirm.userId) {
-            handleDelete(deleteConfirm.userId);
-          }
-        }}
-        title="Delete User"
-        message={`Are you sure you want to delete "${deleteConfirm.userName}"? This action cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
+        userName={deleteConfirm.userName}
         loading={loading}
+        onClose={() => setDeleteConfirm({ isOpen: false })}
+        onConfirm={handleDelete}
       />
     </div>
   );
