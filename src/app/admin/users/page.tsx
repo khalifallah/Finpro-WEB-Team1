@@ -31,6 +31,20 @@ export default function UsersPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
+  // ✅ FIXED: Return FULL URL dengan http/https
+  const getApiUrl = () => {
+    if (typeof window !== 'undefined') {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+      
+      // Debug: log environment variable
+      console.log('🔧 NEXT_PUBLIC_API_URL:', baseUrl);
+      
+      // Return full URL, remove trailing slash
+      return baseUrl ? baseUrl.replace(/\/$/, '') : 'http://localhost:8000/api';
+    }
+    return 'http://localhost:8000/api';
+  };
+
   // Redirect if not super admin
   useEffect(() => {
     if (user && !isSuperAdmin) {
@@ -72,21 +86,42 @@ export default function UsersPage() {
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
 
-  // Fetch stores
+  // ✅ Update fetchStores with getApiUrl
   const fetchStores = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores`, {
+      const url = `${getApiUrl()}/stores`;
+      console.log('📡 Fetching stores from:', url);
+      
+      const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
-      setStores(data.stores || data || []);
+      console.log('📦 Raw Stores Response:', data);
+
+      // ✅ Defensive parsing
+      let storesList: Store[] = [];
+      
+      // Check response wrapper
+      if (data.data && Array.isArray(data.data)) {
+        storesList = data.data;
+      } else if (Array.isArray(data.stores)) {
+        storesList = data.stores;
+      } else if (Array.isArray(data.data)) {
+        storesList = data.data;
+      } else if (Array.isArray(data)) {
+        storesList = data;
+      }
+
+      console.log('✅ Stores parsed:', storesList.length);
+      setStores(storesList);
     } catch (error) {
-      console.error('Failed to fetch stores:', error);
+      console.error('❌ Failed to fetch stores:', error);
+      setStores([]);
     }
   };
 
-  // Fetch users
+  // ✅ Update fetchUsers with getApiUrl
   const fetchUsers = async (page: number = 1, search: string = '') => {
     try {
       setLoading(true);
@@ -98,23 +133,74 @@ export default function UsersPage() {
       if (search) params.append('search', search);
       if (roleFilter) params.append('role', roleFilter);
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users?${params}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      const data = await response.json();
+      const url = `${getApiUrl()}/admin/users?${params}`;
+      console.log('📡 Fetching users from:', url);
+      
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      setUsers(data.users || data.data || []);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('📦 Raw API Response:', data);
+
+      // ✅ Handle response wrapper
+      let usersList = [];
+      let totalUsers = 0;
+      let pageNum = page;
+      let limitNum = pagination.limit;
+      let totalPages = 0;
+
+      // Check if response wrapped in data field
+      if (data.data && typeof data.data === 'object') {
+        const dataPayload = data.data;
+        
+        if (Array.isArray(dataPayload.users)) {
+          usersList = dataPayload.users;
+        } else if (Array.isArray(dataPayload)) {
+          usersList = dataPayload;
+        }
+        
+        totalUsers = dataPayload.total || 0;
+        pageNum = dataPayload.page || page;
+        limitNum = dataPayload.limit || pagination.limit;
+        totalPages = dataPayload.totalPages || Math.ceil(totalUsers / limitNum);
+      } 
+      // Direct response (unwrapped)
+      else if (Array.isArray(data.users)) {
+        usersList = data.users;
+        totalUsers = data.total || 0;
+        pageNum = data.page || page;
+        limitNum = data.limit || pagination.limit;
+        totalPages = data.totalPages || Math.ceil(totalUsers / limitNum);
+      } 
+      // Fallback for other formats
+      else if (Array.isArray(data.data)) {
+        usersList = data.data;
+        totalUsers = data.total || usersList.length;
+        pageNum = data.page || page;
+        limitNum = data.limit || pagination.limit;
+        totalPages = data.totalPages || Math.ceil(totalUsers / limitNum);
+      } 
+      else if (Array.isArray(data)) {
+        usersList = data;
+        totalUsers = usersList.length;
+      }
+
+      console.log('✅ Users parsed:', { count: usersList.length, total: totalUsers, pages: totalPages });
+      setUsers(usersList);
       setPagination({
-        page: data.page || page,
-        limit: data.limit || 10,
-        total: data.total || 0,
-        totalPages: Math.ceil((data.total || 0) / (data.limit || 10)),
+        page: pageNum,
+        limit: limitNum,
+        total: totalUsers,
+        totalPages: totalPages,
       });
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+      console.error('❌ Failed to fetch users:', error);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -122,6 +208,8 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (isSuperAdmin) {
+      console.log('🚀 API Base URL:', getApiUrl());
+      console.log('🚀 Full URL to fetch:', `${getApiUrl()}/admin/users`);
       fetchStores();
       fetchUsers(1, '');
     }
@@ -183,9 +271,11 @@ export default function UsersPage() {
     try {
       setFormLoading(true);
       const token = localStorage.getItem('token');
+
+      // ✅ Update endpoints with getApiUrl
       const url = formModal.mode === 'create'
-        ? `${process.env.NEXT_PUBLIC_API_URL}/users/admin`
-        : `${process.env.NEXT_PUBLIC_API_URL}/users/${formModal.user?.id}`;
+        ? `${getApiUrl()}/admin/store-admins`
+        : `${getApiUrl()}/admin/users/${formModal.user?.id}`;
 
       const payload: any = {
         email: formData.email,
@@ -226,7 +316,7 @@ export default function UsersPage() {
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`,
+        `${getApiUrl()}/admin/users/${userId}`,
         {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
@@ -251,7 +341,7 @@ export default function UsersPage() {
     return null;
   }
 
-  // Show nothing if not super admin (redirect happening in useEffect)
+  // Show forbidden message if not super admin
   if (!isSuperAdmin) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -318,6 +408,7 @@ export default function UsersPage() {
             <option value="">All Roles</option>
             <option value="SUPER_ADMIN">Super Admin</option>
             <option value="STORE_ADMIN">Store Admin</option>
+            <option value="USER">User</option>
           </select>
         </div>
       </div>
@@ -348,7 +439,7 @@ export default function UsersPage() {
                       <td className="text-gray-900 font-medium">{usr.email}</td>
                       <td className="text-gray-700">{usr.fullName}</td>
                       <td>
-                        <span className={`badge ${usr.role === 'SUPER_ADMIN' ? 'badge-warning' : 'badge-info'}`}>
+                        <span className={`badge ${usr.role === 'SUPER_ADMIN' ? 'badge-warning' : usr.role === 'STORE_ADMIN' ? 'badge-info' : 'badge-secondary'}`}>
                           {usr.role}
                         </span>
                       </td>
@@ -423,6 +514,7 @@ export default function UsersPage() {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="input input-bordered w-full"
               placeholder="user@example.com"
+              disabled={formModal.mode === 'edit'}
             />
           </div>
 
