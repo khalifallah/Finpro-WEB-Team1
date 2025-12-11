@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import DataTable from '@/components/common/DataTable';  // ✅ Ganti dari Table ke DataTable
+import { useRouter } from 'next/navigation';
+import DataTable from '@/components/common/DataTable';
 import Pagination from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import DiscountFormModal, { DiscountFormData } from '@/components/admin/DiscountFormModal';
@@ -28,6 +29,7 @@ interface Product { id: number; name: string; }
 
 export default function DiscountsPage() {
   const { user } = useAuth();
+  const router = useRouter();  // ✅ ADD THIS
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const userStoreId = user?.store?.id;
   const userStoreName = user?.store?.name;
@@ -113,6 +115,11 @@ export default function DiscountsPage() {
 
   const handleEdit = (discount: Discount) => setFormModal({ isOpen: true, mode: 'edit', discount });
 
+  // ✅ ADD THIS: Navigate to usage page
+  const handleViewUsage = (discountId: number) => {
+    router.push(`/admin/discounts/${discountId}/usages`);
+  };
+
   const handleSubmit = async (data: DiscountFormData): Promise<void> => {
     const url = formModal.mode === 'create' ? `${getApiUrl()}/discounts` : `${getApiUrl()}/discounts/${formModal.discount?.id}`;
     const payload = {
@@ -162,7 +169,7 @@ export default function DiscountsPage() {
     return 'BOGO';
   };
 
-  // ✅ Columns dengan warna visible (text hitam/gelap)
+  // ✅ UPDATED: Columns dengan "See Usage" button
   const columns = [
     {
       key: 'id',
@@ -226,6 +233,12 @@ export default function DiscountsPage() {
       header: 'Actions',
       render: (value: number, item: Discount) => (
         <div className="flex gap-2 justify-end">
+          {/* ✅ ADD: See Usage Button */}
+          <button onClick={() => handleViewUsage(value)}
+            className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-sm"
+            title="View Usage Report">
+            📈 Usage
+          </button>
           <button onClick={() => handleEdit(item)}
             className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm">
             ✏️ Edit
@@ -286,7 +299,7 @@ export default function DiscountsPage() {
         </div>
       )}
 
-      {/* ✅ Table menggunakan DataTable (zebra terang) */}
+      {/* Table */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <DataTable 
           columns={columns} 
