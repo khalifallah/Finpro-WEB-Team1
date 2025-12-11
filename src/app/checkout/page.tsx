@@ -1,27 +1,43 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import AuthGuard from "@/components/AuthGuard";
 import { axiosInstance } from "@/libs/axios/axios.config";
 import AddressList from "@/components/AddressList";
 import AddressForm from "@/components/AddressForm";
 import { UserAddress } from "@/types/address";
-import { ShippingService, CheckoutPreview, CheckoutValidation } from "@/types/shipping";
+import {
+  ShippingService,
+  CheckoutPreview,
+  CheckoutValidation,
+} from "@/types/shipping";
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [checkoutPreview, setCheckoutPreview] = useState<CheckoutPreview | null>(null);
-  const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(null);
-  const [selectedShipping, setSelectedShipping] = useState<ShippingService | null>(null);
+  const [checkoutPreview, setCheckoutPreview] =
+    useState<CheckoutPreview | null>(null);
+  const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(
+    null
+  );
+  const [selectedShipping, setSelectedShipping] =
+    useState<ShippingService | null>(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [showAddressList, setShowAddressList] = useState(false);
   const [error, setError] = useState("");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const [validationResult, setValidationResult] = useState<CheckoutValidation | null>(null);
+  const [validationResult, setValidationResult] =
+    useState<CheckoutValidation | null>(null);
+
+  const storeIdParam = searchParams.get("storeId");
+  const itemsParam = searchParams.get("items");
+
+  const storeId = storeIdParam ? Number(storeIdParam) : null;
+  const cartItemIds = itemsParam ? JSON.parse(itemsParam) : [];
 
   useEffect(() => {
     if (user) {
@@ -34,7 +50,7 @@ export default function CheckoutPage() {
       setLoading(true);
       const response = await axiosInstance.get("/orders/checkout/preview");
       setCheckoutPreview(response.data.data.preview);
-      
+
       // Set selected address if available
       if (response.data.data.preview.selectedAddress) {
         setSelectedAddress(response.data.data.preview.selectedAddress);
@@ -49,18 +65,21 @@ export default function CheckoutPage() {
   const handleAddressSelect = async (address: UserAddress) => {
     setSelectedAddress(address);
     setShowAddressList(false);
-    
+
     // Calculate shipping for selected address
     try {
       const response = await axiosInstance.post("/orders/checkout/validate", {
         addressId: address.id,
         shippingMethod: selectedShipping?.serviceCode || "REG",
       });
-      
+
       setValidationResult(response.data.data);
-      
+
       // Auto-select first shipping method if none selected
-      if (!selectedShipping && response.data.data.availableShippingMethods?.length > 0) {
+      if (
+        !selectedShipping &&
+        response.data.data.availableShippingMethods?.length > 0
+      ) {
         setSelectedShipping(response.data.data.availableShippingMethods[0]);
       }
     } catch (err: any) {
@@ -104,6 +123,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!storeId || cartItemIds.length === 0) {
+      setError("Invalid order data. Please return to cart.");
+      return;
+    }
+
     setIsPlacingOrder(true);
     setError("");
 
@@ -111,6 +135,8 @@ export default function CheckoutPage() {
       const response = await axiosInstance.post("/orders/create", {
         userAddressId: selectedAddress.id,
         shippingMethod: selectedShipping.serviceCode,
+        storeId: storeId,
+        cartItemIds: cartItemIds,
       });
 
       // Redirect to order confirmation page
@@ -204,7 +230,7 @@ export default function CheckoutPage() {
             <div className="card bg-base-100 shadow-xl">
               <div className="card-body">
                 <h2 className="card-title mb-4">Shipping Address</h2>
-                
+
                 {selectedAddress ? (
                   <div className="border rounded-lg p-4">
                     <div className="flex justify-between items-start">
@@ -221,7 +247,9 @@ export default function CheckoutPage() {
                             </span>
                           )}
                         </div>
-                        <p className="font-medium">{selectedAddress.recipientName}</p>
+                        <p className="font-medium">
+                          {selectedAddress.recipientName}
+                        </p>
                         {selectedAddress.recipientPhone && (
                           <p className="text-sm text-gray-600">
                             {selectedAddress.recipientPhone}
@@ -236,7 +264,7 @@ export default function CheckoutPage() {
                         Change
                       </button>
                     </div>
-                    
+
                     {validationResult?.distance && (
                       <div className="mt-4 p-3 bg-base-200 rounded-lg">
                         <div className="flex items-center gap-2 text-sm">
@@ -256,7 +284,9 @@ export default function CheckoutPage() {
                           </svg>
                           <span>
                             Distance to store:{" "}
-                            <strong>{validationResult.distance.toFixed(1)} km</strong>
+                            <strong>
+                              {validationResult.distance.toFixed(1)} km
+                            </strong>
                           </span>
                         </div>
                       </div>
@@ -316,48 +346,57 @@ export default function CheckoutPage() {
               <div className="card bg-base-100 shadow-xl">
                 <div className="card-body">
                   <h2 className="card-title mb-4">Shipping Method</h2>
-                  
-                  {validationResult?.availableShippingMethods && validationResult.availableShippingMethods.length > 0 ? (
+
+                  {validationResult?.availableShippingMethods &&
+                  validationResult.availableShippingMethods.length > 0 ? (
                     <div className="space-y-3">
-                      {validationResult.availableShippingMethods.map((shipping) => (
-                        <div
-                          key={shipping.serviceCode}
-                          className={`border rounded-lg p-4 cursor-pointer hover:border-primary transition-colors ${
-                            selectedShipping?.serviceCode === shipping.serviceCode
-                              ? "border-primary border-2 bg-primary/5"
-                              : "border-base-300"
-                          }`}
-                          onClick={() => handleShippingSelect(shipping)}
-                        >
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <h3 className="font-medium">{shipping.serviceName}</h3>
-                              <p className="text-sm text-gray-600">
-                                {shipping.description}
-                              </p>
-                              {shipping.estimatedDays && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Estimated delivery: {shipping.estimatedDays}
+                      {validationResult.availableShippingMethods.map(
+                        (shipping) => (
+                          <div
+                            key={shipping.serviceCode}
+                            className={`border rounded-lg p-4 cursor-pointer hover:border-primary transition-colors ${
+                              selectedShipping?.serviceCode ===
+                              shipping.serviceCode
+                                ? "border-primary border-2 bg-primary/5"
+                                : "border-base-300"
+                            }`}
+                            onClick={() => handleShippingSelect(shipping)}
+                          >
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <h3 className="font-medium">
+                                  {shipping.serviceName}
+                                </h3>
+                                <p className="text-sm text-gray-600">
+                                  {shipping.description}
                                 </p>
-                              )}
-                            </div>
-                            <div className="text-right">
-                              <p className="font-bold">{formatPrice(shipping.cost)}</p>
-                              {selectedShipping?.serviceCode === shipping.serviceCode && (
-                                <span className="badge badge-primary badge-sm mt-1">
-                                  Selected
-                                </span>
-                              )}
+                                {shipping.estimatedDays && (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Estimated delivery: {shipping.estimatedDays}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold">
+                                  {formatPrice(shipping.cost)}
+                                </p>
+                                {selectedShipping?.serviceCode ===
+                                  shipping.serviceCode && (
+                                  <span className="badge badge-primary badge-sm mt-1">
+                                    Selected
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-4">
                       <p className="text-gray-500">
-                        No shipping methods available for this address.
-                        Please select a different address.
+                        No shipping methods available for this address. Please
+                        select a different address.
                       </p>
                       <button
                         className="btn btn-sm btn-outline mt-2"
@@ -377,7 +416,10 @@ export default function CheckoutPage() {
                 <h2 className="card-title mb-4">Order Items</h2>
                 <div className="space-y-4">
                   {checkoutPreview.cartSummary.map((item) => (
-                    <div key={item.productId} className="flex items-center gap-4">
+                    <div
+                      key={item.productId}
+                      className="flex items-center gap-4"
+                    >
                       {item.imageUrl && (
                         <div className="w-16 h-16 rounded-lg overflow-hidden bg-base-200">
                           <img
@@ -411,38 +453,39 @@ export default function CheckoutPage() {
             <div className="card bg-base-100 shadow-xl sticky top-4">
               <div className="card-body">
                 <h2 className="card-title mb-4">Order Summary</h2>
-                
+
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
                     <span>{formatPrice(checkoutPreview.subtotal)}</span>
                   </div>
-                  
+
                   {selectedShipping && (
                     <div className="flex justify-between">
                       <span>Shipping ({selectedShipping.serviceName})</span>
                       <span>{formatPrice(selectedShipping.cost)}</span>
                     </div>
                   )}
-                  
+
                   <div className="divider"></div>
-                  
+
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
                     <span>
                       {formatPrice(
-                        checkoutPreview.subtotal +
-                          (selectedShipping?.cost || 0)
+                        checkoutPreview.subtotal + (selectedShipping?.cost || 0)
                       )}
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="mt-6">
                   <button
                     className="btn btn-primary btn-block"
                     onClick={handlePlaceOrder}
-                    disabled={!selectedAddress || !selectedShipping || isPlacingOrder}
+                    disabled={
+                      !selectedAddress || !selectedShipping || isPlacingOrder
+                    }
                   >
                     {isPlacingOrder ? (
                       <>
@@ -454,11 +497,11 @@ export default function CheckoutPage() {
                     )}
                   </button>
                 </div>
-                
+
                 <div className="mt-4 text-xs text-gray-500">
                   <p>
-                    By placing your order, you agree to our Terms of Service
-                    and Privacy Policy.
+                    By placing your order, you agree to our Terms of Service and
+                    Privacy Policy.
                   </p>
                 </div>
               </div>
@@ -471,10 +514,8 @@ export default function CheckoutPage() {
       {showAddressList && checkoutPreview.addresses.length > 0 && (
         <div className="modal modal-open">
           <div className="modal-box max-w-4xl">
-            <h3 className="font-bold text-lg mb-4">
-              Select Shipping Address
-            </h3>
-            
+            <h3 className="font-bold text-lg mb-4">Select Shipping Address</h3>
+
             <div className="max-h-96 overflow-y-auto pr-2">
               <AddressList
                 addresses={checkoutPreview.addresses}
@@ -484,7 +525,7 @@ export default function CheckoutPage() {
                 selectedAddressId={selectedAddress?.id}
               />
             </div>
-            
+
             <div className="modal-action">
               <button
                 className="btn btn-ghost"
