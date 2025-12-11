@@ -5,18 +5,27 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 
+// ===================== TYPE DEFINITION =====================
+interface MenuItem {
+  label: string;
+  href: string;
+  icon: string;
+  adminOnly?: "SUPER_ADMIN" | "STORE_ADMIN";
+}
+// =========================================================
+
 // Menu items configuration
-const MENU_ITEMS = [
+const MENU_ITEMS: MenuItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: "dashboard" },
   { label: "Orders", href: "/admin/orders", icon: "orders" },
   { label: "Products", href: "/admin/products", icon: "products" },
   { label: "Categories", href: "/admin/categories", icon: "categories" },
   { label: "Stocks", href: "/admin/stocks", icon: "stocks" },
-  { label: "Discounts", href: "/admin/discounts", icon: "discounts" },
+  { label: "Discounts", href: "/admin/discounts", icon: "discounts", adminOnly: "STORE_ADMIN" }, // ✅ ONLY for STORE_ADMIN
   { label: "Reports", href: "/admin/reports", icon: "reports" },
-  { label: "Users", href: "/admin/users", icon: "users" },
-   { label: "Stores", href: "/admin/stores", icon: "stores" }
-] as const;
+  { label: "Users", href: "/admin/users", icon: "users", adminOnly: "SUPER_ADMIN" },
+  { label: "Stores", href: "/admin/stores", icon: "stores", adminOnly: "SUPER_ADMIN" }
+];
 
 // Icon component
 const MenuIcon = ({
@@ -147,7 +156,7 @@ const MenuIcon = ({
         />
       </svg>
     ),
-        stores: (  // ← Tambahkan ini
+    stores: (
       <svg
         className={className}
         fill="none"
@@ -271,11 +280,19 @@ export default function AdminLayout({
           </Link>
         </div>
 
-        {/* Navigation - COPY ULANG BAGIAN INI AGAR LENGKAP */}
+        {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {MENU_ITEMS.map((item) => {
-            if (item.href === "/admin/users" && role !== "SUPER_ADMIN")
-              return null;
+            // ===================== PERMISSION CHECK =====================
+            // ✅ Check if menu has adminOnly restriction
+            if (item.adminOnly === "SUPER_ADMIN" && role !== "SUPER_ADMIN") {
+              return null; // Hide for STORE_ADMIN
+            }
+            if (item.adminOnly === "STORE_ADMIN" && role === "SUPER_ADMIN") {
+              return null; // ✅ Hide Discounts for SUPER_ADMIN
+            }
+            // ============================================================
+            
             return (
               <Link
                 key={item.href}
@@ -306,7 +323,7 @@ export default function AdminLayout({
           })}
         </nav>
 
-        {/* User Section - COPY ULANG BAGIAN INI */}
+        {/* User Section */}
         <div className="p-4 border-t border-gray-800">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center font-bold shadow-lg">
@@ -337,11 +354,9 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content Area */}
-      {/* [UPDATE PENTING DI SINI] Tambahkan 'overflow-x-hidden' dan 'w-full' */}
       <div className="flex-1 flex flex-col min-h-screen lg:ml-0 transition-all duration-300 overflow-x-hidden w-full bg-gray-100">
         {/* Header */}
         <header className="bg-white shadow-sm sticky top-0 z-30 w-full">
-          {/* ... (Isi Header jangan diubah, cukup copy yang lama) ... */}
           <div className="flex items-center justify-between px-4 py-3">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -381,14 +396,12 @@ export default function AdminLayout({
                     {userInitial}
                   </div>
                 </label>
-                {/* ... dropdown content ... */}
               </div>
             </div>
           </div>
         </header>
 
         {/* Page Content */}
-        {/* [UPDATE] Pastikan main juga full width dan background solid */}
         <main className="flex-1 p-4 md:p-6 lg:p-8 w-full max-w-full bg-gray-100">
           {children}
         </main>
