@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import GoogleOAuthProviderWrapper from "@/providers/GoogleOAuthProvider";
 import { CartProvider } from "@/contexts/CartContext";
+import NavbarWrapper from "@/components/common/NavbarWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({
       >
         <ToastProvider>
           <AuthProvider>
+            <NavbarWrapper />
             <CartProvider>
               <GoogleOAuthProviderWrapper>
                 {children}

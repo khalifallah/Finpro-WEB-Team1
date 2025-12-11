@@ -195,7 +195,7 @@ export default function CartPage() {
     // ... (Kode empty state Anda)
     return (
       <AuthGuard requireAuth requireVerification={true}>
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 min-h-[calc(100vh-120px)] flex flex-col items-center justify-center">
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-4">Your Cart</h1>
             <div className="max-w-md mx-auto">
