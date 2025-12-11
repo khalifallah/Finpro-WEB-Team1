@@ -56,7 +56,7 @@ export default function DiscountsPage() {
       if (!res.ok) return;
       const data = await res.json();
       
-      // ✅ Defensive parsing - handle berbagai format response
+      // Robust Defensive parsing - handle berbagai format response
       let storesList: Store[] = [];
       if (Array.isArray(data)) {
         storesList = data;
@@ -70,12 +70,10 @@ export default function DiscountsPage() {
           (item): item is Store => item !== null && typeof item === 'object'
         );
       }
-      
-      console.log('🏪 Stores loaded:', storesList.length, storesList);
+
       setStores(storesList);
     } catch (e) { 
-      console.error('Failed to fetch stores:', e);
-      setStores([]); // ✅ Default ke empty array
+      setStores([]); // Default ke empty array
     }
   }, [getAuthHeaders, isSuperAdmin, userStoreId, userStoreName]);
 
@@ -115,7 +113,7 @@ export default function DiscountsPage() {
 
   const handleEdit = (discount: Discount) => setFormModal({ isOpen: true, mode: 'edit', discount });
 
-  // ✅ ADD THIS: Navigate to usage page
+  // Refactor: Navigate to usage page
   const handleViewUsage = (discountId: number) => {
     router.push(`/admin/discounts/${discountId}/usages`);
   };
@@ -169,7 +167,7 @@ export default function DiscountsPage() {
     return 'BOGO';
   };
 
-  // ✅ UPDATED: Columns dengan "See Usage" button
+  // Refactor: Columns dengan "See Usage" button
   const columns = [
     {
       key: 'id',
@@ -233,7 +231,7 @@ export default function DiscountsPage() {
       header: 'Actions',
       render: (value: number, item: Discount) => (
         <div className="flex gap-2 justify-end">
-          {/* ✅ ADD: See Usage Button */}
+          {/* See Usage Button */}
           <button onClick={() => handleViewUsage(value)}
             className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-sm"
             title="View Usage Report">

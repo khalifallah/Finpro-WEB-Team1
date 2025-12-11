@@ -81,7 +81,7 @@ export default function StocksPage() {
       });
       const data = await response.json();
       
-      // ✅ Defensive parsing - handle berbagai format response
+      // Defensive parsing - handle berbagai format response
       let storesList = [];
       if (Array.isArray(data)) {
         storesList = data;
@@ -94,11 +94,9 @@ export default function StocksPage() {
         storesList = Object.values(data.stores);
       }
       
-      console.log('🏪 Stores loaded:', storesList.length, storesList);
       setStores(storesList);
     } catch (error) {
-      console.error('Failed to fetch stores:', error);
-      setStores([]); // ✅ Default to empty array on error
+      setStores([]); // Default to empty array on error
     }
   };
 
@@ -110,7 +108,7 @@ export default function StocksPage() {
       });
       const data = await response.json();
       
-      // ✅ Defensive parsing
+      // Defensive parsing
       let productsList = [];
       if (Array.isArray(data)) {
         productsList = data;
@@ -122,11 +120,9 @@ export default function StocksPage() {
         productsList = Object.values(data.products);
       }
       
-      console.log('📦 Products loaded:', productsList.length, productsList);
       setProducts(productsList);
     } catch (error) {
-      console.error('Failed to fetch products:', error);
-      setProducts([]); // ✅ Default to empty array on error
+      setProducts([]); // Default to empty array on error
     }
   };
 
@@ -156,7 +152,6 @@ export default function StocksPage() {
         totalPages: Math.ceil((data.total || 0) / (data.limit || 10)),
       });
     } catch (error) {
-      console.error('Failed to fetch stocks:', error);
     } finally {
       setLoading(false);
     }
@@ -175,7 +170,6 @@ export default function StocksPage() {
         journals: data.journals || data.data || [],
       });
     } catch (error) {
-      console.error('Failed to fetch journals:', error);
       setJournalModal({ isOpen: true, productName, journals: [] });
     }
   };
@@ -186,7 +180,6 @@ export default function StocksPage() {
     storeId: number,
     quantity: number
   ): Promise<void> => {
-    console.log('📝 Creating stock...', { productId, storeId, quantity });
 
     if (!productId || !storeId || !quantity) {
       throw new Error('All fields are required');
@@ -207,12 +200,10 @@ export default function StocksPage() {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('❌ Create stock failed:', errorData);
       throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
     }
 
-    console.log('✅ Stock created successfully');
-    setCreateModal(false); // ✅ Close modal on success
+    setCreateModal(false); // Close modal on success
     await fetchStocks(1);
   };
 
@@ -222,7 +213,6 @@ export default function StocksPage() {
     quantityChange: number,
     reason: string
   ): Promise<void> => {
-    console.log('📝 Updating stock...', { stockId, quantityChange, reason });
 
     const response = await fetch(`${getApiUrl()}/stocks/${stockId}`, {
       method: 'PUT',
@@ -235,11 +225,9 @@ export default function StocksPage() {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('❌ Update stock failed:', errorData);
       throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
     }
 
-    console.log('✅ Stock updated successfully');
     await fetchStocks(pagination.page);
   };
 

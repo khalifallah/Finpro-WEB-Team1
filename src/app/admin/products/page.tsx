@@ -44,13 +44,12 @@ export default function ProductPage() {
         search: search || undefined,
       });
 
-      console.log('📦 Products API Response:', response); // Debug
 
       let productsData: ProductResponse[] = [];
       let total = 0;
       let totalPages = 0;
 
-      // ✅ Handle response formats
+      // Handle response formats
       if (response?.products && Array.isArray(response.products)) {
         productsData = response.products;
         
@@ -75,8 +74,6 @@ export default function ProductPage() {
         totalPages = 1;
       }
 
-      console.log('✅ Parsed:', { count: productsData.length, total, totalPages });
-
       setProducts(productsData);
       setPagination({
         page,
@@ -85,7 +82,6 @@ export default function ProductPage() {
         totalPages,
       });
     } catch (error) {
-      console.error('Failed to fetch products:', error);
       setProducts([]);
     } finally {
       setLoading(false);
@@ -108,7 +104,6 @@ export default function ProductPage() {
       await fetchProducts(pagination.page, searchQuery);
       setDeleteConfirm({ isOpen: false });
     } catch (error: any) {
-      console.error('Failed to delete product:', error);
       setError(error.message || 'Failed to delete product');
       setTimeout(() => setDeleteConfirm({ isOpen: false }), 2000);
     } finally {
@@ -169,7 +164,7 @@ export default function ProductPage() {
           }
         />
 
-        {/* ✅ Pagination */}
+        {/* Pagination */}
         {pagination.totalPages > 1 && (
           <div className="p-4 border-t border-gray-200 bg-gray-50">
             <Pagination

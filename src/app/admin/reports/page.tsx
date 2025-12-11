@@ -58,7 +58,7 @@ export default function ReportsPage() {
       if (response.ok) {
         const data = await response.json();
         
-        // ✅ Defensive parsing - handle berbagai format response
+        // Defensive parsing - handle berbagai format response
         let storesList: Store[] = [];
         if (Array.isArray(data)) {
           storesList = data;
@@ -72,13 +72,10 @@ export default function ReportsPage() {
             (item): item is Store => item !== null && typeof item === 'object'
           );
         }
-        
-        console.log('🏪 Stores loaded:', storesList.length, storesList);
         setStores(storesList);
       }
     } catch (error) {
-      console.error('Failed to fetch stores:', error);
-      setStores([]); // ✅ Default ke empty array
+      setStores([]); // Default ke empty array
     }
   }, [isSuperAdmin, getAuthHeaders]);
 
@@ -105,7 +102,6 @@ export default function ReportsPage() {
       const response = await fetch(`${getApiUrl()}/reports/sales/monthly?${params}`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
-        console.log('Sales Monthly Response:', data);
         setSalesMonthly(Array.isArray(data.data) ? data.data : []);
       } else {
         setSalesMonthly([]);
@@ -136,7 +132,6 @@ export default function ReportsPage() {
         setSalesByCategory([]);
       }
     } catch (error) {
-      console.error('Failed to fetch sales by category:', error);
       setSalesByCategory([]);
     } finally {
       setLoading(false);
@@ -162,7 +157,6 @@ export default function ReportsPage() {
         setSalesByProduct([]);
       }
     } catch (error) {
-      console.error('Failed to fetch sales by product:', error);
       setSalesByProduct([]);
     } finally {
       setLoading(false);
@@ -188,7 +182,6 @@ export default function ReportsPage() {
         setStockSummary([]);
       }
     } catch (error) {
-      console.error('Failed to fetch stock summary:', error);
       setStockSummary([]);
     } finally {
       setLoading(false);

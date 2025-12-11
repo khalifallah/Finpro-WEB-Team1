@@ -76,7 +76,6 @@ export default function EditProductPage() {
       if (!response.ok) throw new Error('Failed to fetch product');
 
       const data = await response.json();
-      console.log('📦 Raw API Response:', data); // DEBUG
 
       // Handle actual backend response structure
       let productData: Product;
@@ -109,8 +108,6 @@ export default function EditProductPage() {
           imageUrl: img.imageUrl,
         }));
 
-      console.log('✅ Normalized Images:', normalizedImages); // DEBUG
-
       // Set product with normalized images
       setProduct({
         ...productData,
@@ -124,7 +121,6 @@ export default function EditProductPage() {
         categoryId: productData.category?.id || 0,
       });
     } catch (err: any) {
-      console.error('❌ Error fetching product:', err);
       setError(err.message || 'Failed to load product');
     } finally {
       setLoading(false);
@@ -147,7 +143,6 @@ export default function EditProductPage() {
       const categoriesData = Array.isArray(data) ? data : data.data || data.categories || [];
       setCategories(categoriesData);
     } catch (err) {
-      console.error('Failed to fetch categories:', err);
     }
   };
 
@@ -163,10 +158,8 @@ export default function EditProductPage() {
 
   // Handle new images upload
   const handleUploadImages = (files: File[]) => {
-    console.log(`📸 Adding ${files.length} new image(s) to upload`);
     const previews = files.map((file) => {
       const url = URL.createObjectURL(file);
-      console.log(`  - Preview created for: ${file.name}`);
       return url;
     });
     setNewImages((prev) => [...prev, ...files]);
@@ -175,7 +168,6 @@ export default function EditProductPage() {
 
   // Remove new image before upload
   const handleRemoveNewImage = (index: number) => {
-    console.log(`🗑️ Removing new image at index ${index}`);
     URL.revokeObjectURL(newImagePreviews[index]);
     setNewImages((prev) => prev.filter((_, i) => i !== index));
     setNewImagePreviews((prev) => prev.filter((_, i) => i !== index));
@@ -184,7 +176,6 @@ export default function EditProductPage() {
   // Delete existing image from server
   const handleDeleteImage = async (imageId: number): Promise<void> => {
     try {
-      console.log(`🗑️ Deleting image ${imageId}...`);
       const response = await fetch(
         `${getApiUrl()}/products/${productId}/images/${imageId}?confirm=yes`,
         {
@@ -210,7 +201,6 @@ export default function EditProductPage() {
       setSuccess('Image deleted successfully');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      console.error('❌ Failed to delete image:', err);
       setError(err.message || 'Failed to delete image');
       // Don't return anything - just throw error for caller to handle
       throw err;
@@ -262,15 +252,12 @@ export default function EditProductPage() {
 
       // 2. Upload new images if any
       if (newImages.length > 0) {
-        console.log(`📸 Uploading ${newImages.length} new image(s)...`);
         const imageFormData = new FormData();
         newImages.forEach((file, index) => {
-          console.log(`  - Image ${index + 1}: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
           imageFormData.append('images', file);
         });
 
         const imageEndpoint = `${getApiUrl()}/products/${productId}/images`;
-        console.log(`🔗 Uploading to: ${imageEndpoint}`);
 
         const imageResponse = await fetch(imageEndpoint, {
           method: 'POST',
@@ -280,14 +267,12 @@ export default function EditProductPage() {
 
         if (!imageResponse.ok) {
           const errorData = await imageResponse.json().catch(() => ({}));
-          console.error('❌ Image upload failed:', errorData);
           throw new Error(errorData.error || errorData.message || 'Failed to upload images');
         }
 
         // Clear new images after successful upload
         newImagePreviews.forEach((preview) => {
           URL.revokeObjectURL(preview);
-          console.log(`  - Preview revoked: ${preview}`);
         });
         setNewImages([]);
         setNewImagePreviews([]);

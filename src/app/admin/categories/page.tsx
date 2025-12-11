@@ -5,7 +5,7 @@ import SearchBar from '@/components/common/SearchBar';
 import Pagination from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import Modal from '@/components/common/Modal';
-import CategoryList from '@/components/admin/CategoryList'; // ← IMPORT COMPONENT BARU
+import CategoryList from '@/components/admin/CategoryList';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Category {
@@ -99,7 +99,6 @@ export default function CategoriesPage() {
       setCategories(categoriesData);
       setPagination(paginationData);
     } catch (error) {
-      console.error('Failed to fetch categories:', error);
       setCategories([]);
     } finally {
       setLoading(false);
@@ -194,7 +193,6 @@ export default function CategoriesPage() {
       fetchCategories(pagination.page, searchQuery);
       setDeleteConfirm({ isOpen: false });
     } catch (error: any) {
-      console.error('Failed to delete category:', error);
       alert(`Error: ${error.message}`);
     } finally {
       setLoading(false);
