@@ -6,4 +6,12 @@ const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
 const FRONTEND_URL =
   process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
 
-export { BASE_API_URL, IS_DEVELOPMENT, FRONTEND_URL };
+const NEXT_PUBLIC_GOOGLE_MAPS_API_KEY =
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+export {
+  BASE_API_URL,
+  IS_DEVELOPMENT,
+  FRONTEND_URL,
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+};

@@ -8,7 +8,9 @@
 		"start": "next start"
 	},
 	"dependencies": {
+		"@googlemaps/js-api-loader": "^1.16.10",
 		"@react-oauth/google": "^0.12.2",
+		"@types/google.maps": "^3.58.1",
 		"axios": "^1.11.0",
 		"cookies-next": "^6.1.1",
 		"formik": "^2.4.6",
