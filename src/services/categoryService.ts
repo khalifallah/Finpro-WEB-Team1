@@ -6,14 +6,35 @@ import {
   UpdateCategoryRequest,
 } from "@/types/product.types";
 
+export interface GetCategoriesParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
 export const categoryService = {
-  // GET /categories (ADMIN)
-  getCategories: async (page = 1, limit = 10): Promise<any> => {
+  // GET /categories (ADMIN) - DENGAN SUPPORT SEARCH
+  getCategories: async (params?: GetCategoriesParams): Promise<any> => {
     try {
+      const queryParams: any = {
+        page: params?.page || 1,
+        limit: params?.limit || 10,
+      };
+
+      // ADD SEARCH PARAM IF PROVIDED
+      if (params?.search && params.search.trim() !== '') {
+        queryParams.search = params.search.trim();
+      }
+
       const response = await axiosInstance.get("/categories", {
-        params: { page, limit },
+        params: queryParams,
       });
-      return response.data.data;
+
+      // FIX: Return correct data structure
+      // API returns: { categories: [...], total: 11, ... }
+      const responseData = response.data.data || response.data;
+      return responseData;
+
     } catch (error) {
       axiosError(error, "Failed to fetch categories");
       throw error;
@@ -32,7 +53,9 @@ export const categoryService = {
   },
 
   // POST /categories (SUPER_ADMIN)
-  createCategory: async (data: CreateCategoryRequest): Promise<CategoryResponse> => {
+  createCategory: async (
+    data: CreateCategoryRequest
+  ): Promise<CategoryResponse> => {
     try {
       const response = await axiosInstance.post("/categories", data);
       return response.data.data;
@@ -43,7 +66,10 @@ export const categoryService = {
   },
 
   // PUT /categories/:id (SUPER_ADMIN)
-  updateCategory: async (id: number, data: UpdateCategoryRequest): Promise<CategoryResponse> => {
+  updateCategory: async (
+    id: number,
+    data: UpdateCategoryRequest
+  ): Promise<CategoryResponse> => {
     try {
       const response = await axiosInstance.put(`/categories/${id}`, data);
       return response.data.data;

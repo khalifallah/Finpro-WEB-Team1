@@ -7,12 +7,20 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import Modal from '@/components/common/Modal';
 import CategoryList from '@/components/admin/CategoryList';
 import { useAuth } from '@/contexts/AuthContext';
+import { categoryService } from '@/services/categoryService';
 
 interface Category {
   id: number;
   name: string;
   createdAt: string;
   updatedAt?: string;
+}
+
+interface PaginationData {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 export default function CategoriesPage() {
@@ -22,7 +30,8 @@ export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [pagination, setPagination] = useState({
+  const [error, setError] = useState('');
+  const [pagination, setPagination] = useState<PaginationData>({
     page: 1,
     limit: 10,
     total: 0,
@@ -45,70 +54,63 @@ export default function CategoriesPage() {
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
 
-  const getApiUrl = () => {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
-  };
-
+  // FETCH CATEGORIES DENGAN SERVICE 
   const fetchCategories = async (page: number = 1, search: string = '') => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const apiUrl = getApiUrl();
+      setError('');
 
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(pagination.limit),
+      const response = await categoryService.getCategories({
+        page,
+        limit: pagination.limit,
+        search: search.trim() || undefined,
       });
-      if (search) params.append('search', search);
-
-      const response = await fetch(`${apiUrl}/categories?${params}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch');
-
-      const data = await response.json();
 
       let categoriesData: Category[] = [];
-      let paginationData = { page, limit: pagination.limit, total: 0, totalPages: 0 };
+      let total = 0;
+      let totalPages = 0;
 
-      if (Array.isArray(data)) {
-        categoriesData = data;
-        paginationData = { page, limit: pagination.limit, total: data.length, totalPages: 1 };
-      } else if (data?.data && Array.isArray(data.data)) {
-        categoriesData = data.data;
-        paginationData = {
-          page: data.pagination?.page || page,
-          limit: data.pagination?.limit || pagination.limit,
-          total: data.pagination?.total || data.data.length,
-          totalPages: data.pagination?.totalPages || 1,
-        };
-      } else if (data?.categories && Array.isArray(data.categories)) {
-        categoriesData = data.categories;
-        paginationData = {
-          page,
-          limit: pagination.limit,
-          total: data.total || categoriesData.length,
-          totalPages: Math.ceil((data.total || 0) / pagination.limit),
-        };
+      // CORRECT FIXED PARSING INGAT!
+      // Format: { categories: [...], total: 11 }
+      if (response?.categories && Array.isArray(response.categories)) {
+        categoriesData = response.categories;
+        total = response.total || response.categories.length;
+        totalPages = Math.ceil(total / pagination.limit);
+      }
+      // Fallback: Direct array
+      else if (Array.isArray(response)) {
+        categoriesData = response;
+        total = response.length;
+        totalPages = 1;
+      }
+      // Fallback: { data: [...] }
+      else if (response?.data && Array.isArray(response.data)) {
+        categoriesData = response.data;
+        total = response.total || response.data.length;
+        totalPages = Math.ceil(total / pagination.limit);
       }
 
       setCategories(categoriesData);
-      setPagination(paginationData);
-    } catch (error) {
+      setPagination({
+        page,
+        limit: pagination.limit,
+        total,
+        totalPages,
+      });
+    } catch (err: any) {
+      setError(err.message || 'Failed to load categories');
       setCategories([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Initial fetch
   useEffect(() => {
     fetchCategories();
   }, []);
 
+  // SEARCH HANDLER 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     fetchCategories(1, query);
@@ -134,29 +136,17 @@ export default function CategoriesPage() {
 
     try {
       setFormLoading(true);
-      const token = localStorage.getItem('token');
-      const apiUrl = getApiUrl();
+      setFormError('');
 
-      const url = formModal.mode === 'create'
-        ? `${apiUrl}/categories`
-        : `${apiUrl}/categories/${formModal.category?.id}`;
-
-      const response = await fetch(url, {
-        method: formModal.mode === 'create' ? 'POST' : 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || error.error || 'Failed to save category');
+      if (formModal.mode === 'create') {
+        await categoryService.createCategory({ name: formData.name });
+      } else if (formModal.category) {
+        await categoryService.updateCategory(formModal.category.id, { name: formData.name });
       }
 
       setFormModal({ isOpen: false, mode: 'create' });
-      fetchCategories(pagination.page, searchQuery);
+      // Refresh dengan search query yang sama
+      fetchCategories(1, searchQuery);
     } catch (error: any) {
       setFormError(error.message || 'Failed to save category');
     } finally {
@@ -167,36 +157,19 @@ export default function CategoriesPage() {
   const handleDelete = async (categoryId: number) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const apiUrl = getApiUrl();
-
-      // Middleware Backend |?confirm=yes query parameter
-      const response = await fetch(`${apiUrl}/categories/${categoryId}?confirm=yes`, {
-        method: 'DELETE',
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Failed to delete category';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData?.message || errorData?.error || errorMessage;
-        } catch {
-          errorMessage = `Error: ${response.status} ${response.statusText}`;
-        }
-        throw new Error(errorMessage);
-      }
-
+      await categoryService.deleteCategory(categoryId);
+      // Refresh dengan search query yang sama
       fetchCategories(pagination.page, searchQuery);
       setDeleteConfirm({ isOpen: false });
     } catch (error: any) {
-      alert(`Error: ${error.message}`);
+      setError(error.message || 'Failed to delete category');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (page: number) => {
+    fetchCategories(page, searchQuery);
   };
 
   return (
@@ -225,6 +198,16 @@ export default function CategoriesPage() {
         </div>
       )}
 
+      {/* Error Alert */}
+      {error && (
+        <div className="alert alert-error gap-3 rounded-lg border border-red-300 bg-red-50">
+          <svg className="stroke-current shrink-0 h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-sm font-medium">{error}</span>
+        </div>
+      )}
+
       {/* Search */}
       <div className="bg-gray-100 p-4 rounded-lg shadow-sm border border-gray-300">
         <SearchBar
@@ -236,6 +219,14 @@ export default function CategoriesPage() {
 
       {/* Table - Menggunakan CategoryList Component */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {categories.length > 0 && (
+          <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+            <p className="text-sm text-gray-600 font-medium">
+              Showing {(pagination.page - 1) * pagination.limit + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} categories
+            </p>
+          </div>
+        )}
+
         <CategoryList
           categories={categories}
           loading={loading}
@@ -251,7 +242,7 @@ export default function CategoriesPage() {
             <Pagination
               currentPage={pagination.page}
               totalPages={pagination.totalPages}
-              onPageChange={(page) => fetchCategories(page, searchQuery)}
+              onPageChange={handlePageChange}
             />
           </div>
         )}
@@ -315,7 +306,7 @@ export default function CategoriesPage() {
           <div className="flex gap-3 justify-end pt-6 border-t border-gray-200">
             <button
               onClick={() => setFormModal({ isOpen: false, mode: 'create' })}
-              className="btn btn-outline btn-md min-w-24 text-black  hover:text-gray-500 bg-red-200"
+              className="btn btn-outline btn-md min-w-24 text-black hover:text-gray-500 bg-red-200"
               disabled={formLoading}
             >
               Cancel
@@ -358,7 +349,6 @@ export default function CategoriesPage() {
         isOpen={deleteConfirm.isOpen}
         onClose={() => setDeleteConfirm({ isOpen: false })}
         onConfirm={() => {
-          // Ensure it returns Promise<void> or void
           if (!deleteConfirm.categoryId) return;
           handleDelete(deleteConfirm.categoryId);
         }}

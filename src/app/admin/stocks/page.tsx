@@ -65,6 +65,7 @@ export default function StocksPage() {
   }>({ isOpen: false, productName: '', journals: [] });
 
   const [createModal, setCreateModal] = useState(false);
+  const [storesError, setStoresError] = useState('');
 
   const getApiUrl = () => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -73,32 +74,54 @@ export default function StocksPage() {
     return { Authorization: `Bearer ${token}` };
   };
 
-  // Fetch stores
+  // ===================== IMPROVED FETCH STORES =====================
   const fetchStores = async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/stores`, {
+      setStoresError('');
+      const url = `${getApiUrl()}/stores`;
+      
+      const response = await fetch(url, {
         headers: getAuthHeaders(),
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: Failed to fetch stores`);
+      }
+
       const data = await response.json();
       
-      // Defensive parsing - handle berbagai format response
       let storesList = [];
-      if (Array.isArray(data)) {
+      
+      // FIXED PARSING - HANDLE API WRAPPER
+      // Backend wraps response in { code, message, data: { stores, pagination } }
+      if (data.data && data.data.stores && Array.isArray(data.data.stores)) {
+        storesList = data.data.stores;
+      }
+      // Format 2: Direct array (if endpoint changed)
+      else if (Array.isArray(data)) {
         storesList = data;
-      } else if (Array.isArray(data.stores)) {
+      }
+      // Format 3: { stores: [...] } (legacy)
+      else if (Array.isArray(data.stores)) {
         storesList = data.stores;
-      } else if (Array.isArray(data.data)) {
+      }
+      // Format 4: { data: [...] } (wrapped without stores key)
+      else if (Array.isArray(data.data)) {
         storesList = data.data;
-      } else if (data.stores && typeof data.stores === 'object') {
-        // Jika object, convert ke array
-        storesList = Object.values(data.stores);
+      }
+
+      if (!storesList || storesList.length === 0) {
+        setStoresError('No stores found. Please contact administrator.');
       }
       
       setStores(storesList);
-    } catch (error) {
-      setStores([]); // Default to empty array on error
+    } catch (error: any) {
+      console.error('❌ Error fetching stores:', error);
+      setStoresError(error.message || 'Failed to load stores');
+      setStores([]);
     }
   };
+  // ==============================================================
 
   // Fetch products (for create modal)
   const fetchProducts = async () => {
@@ -108,7 +131,6 @@ export default function StocksPage() {
       });
       const data = await response.json();
       
-      // Defensive parsing
       let productsList = [];
       if (Array.isArray(data)) {
         productsList = data;
@@ -122,7 +144,8 @@ export default function StocksPage() {
       
       setProducts(productsList);
     } catch (error) {
-      setProducts([]); // Default to empty array on error
+      console.error('Error fetching products:', error);
+      setProducts([]);
     }
   };
 
@@ -136,12 +159,31 @@ export default function StocksPage() {
       });
 
       // For Store Admin, always use their store
+      // For Super Admin, only add storeId if selected
       const storeIdToUse = isSuperAdmin ? selectedStore : userStoreId;
-      if (storeIdToUse) params.append('storeId', String(storeIdToUse));
+      if (storeIdToUse) {
+        params.append('storeId', String(storeIdToUse));
+      }
 
-      const response = await fetch(`${getApiUrl()}/stocks?${params}`, {
+      const url = `${getApiUrl()}/stocks?${params}`;
+
+      const response = await fetch(url, {
         headers: getAuthHeaders(),
       });
+
+      if (!response.ok) {
+        console.warn(`⚠️ Stock fetch warning: HTTP ${response.status}`);
+        // Don't throw - just show empty stocks
+        setStocks([]);
+        setPagination({
+          page: 1,
+          limit: pagination.limit,
+          total: 0,
+          totalPages: 0,
+        });
+        return;
+      }
+
       const data = await response.json();
 
       setStocks(data.stocks || data.data || []);
@@ -152,6 +194,7 @@ export default function StocksPage() {
         totalPages: Math.ceil((data.total || 0) / (data.limit || 10)),
       });
     } catch (error) {
+      console.error('❌ Error fetching stocks:', error);
     } finally {
       setLoading(false);
     }
@@ -231,6 +274,26 @@ export default function StocksPage() {
     await fetchStocks(pagination.page);
   };
 
+  // ===================== HANDLER UNTUK TOMBOL UPDATE & HISTORY =====================
+  const handleOpenUpdateModal = (stock: Stock) => {
+    // SUPER_ADMIN: wajib pilih toko dulu
+    if (isSuperAdmin && !selectedStore) {
+      alert('❌ Please select a store first');
+      return;
+    }
+    setUpdateModal({ isOpen: true, stock });
+  };
+
+  const handleOpenJournalModal = (stock: Stock) => {
+    // SUPER_ADMIN: wajib pilih toko dulu
+    if (isSuperAdmin && !selectedStore) {
+      alert('❌ Please select a store first');
+      return;
+    }
+    fetchJournals(stock.id, stock.product.name);
+  };
+  // ==============================================================================
+
   useEffect(() => {
     fetchStores();
     fetchProducts();
@@ -242,6 +305,10 @@ export default function StocksPage() {
 
   // Get effective store ID for create modal
   const effectiveStoreId = isSuperAdmin ? undefined : userStoreId;
+
+  // ===================== CHECK JIKA SUPER_ADMIN BELUM PILIH TOKO =====================
+  const isSuperAdminWithoutStore = isSuperAdmin && !selectedStore;
+  // ==================================================================================
 
   return (
     <div className="space-y-6">
@@ -257,7 +324,13 @@ export default function StocksPage() {
         </div>
         <button
           onClick={() => setCreateModal(true)}
-          className="btn btn-primary gap-2"
+          disabled={isSuperAdminWithoutStore}
+          className={`btn btn-primary gap-2 ${
+            isSuperAdminWithoutStore ? 'btn-disabled opacity-50 cursor-not-allowed' : ''
+          }`}
+          title={
+            isSuperAdminWithoutStore ? 'Please select a store first' : 'Add new stock'
+          }
         >
           <FiPlus className="w-5 h-5" />
           Add Stock
@@ -266,25 +339,64 @@ export default function StocksPage() {
 
       {/* Store Filter (Super Admin only) */}
       {isSuperAdmin && (
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="p-4 rounded-lg shadow-sm border border-blue-200 bg-blue-50">
+          {/* ===================== SHOW ERROR IF ANY ===================== */}
+          {storesError && (
+            <div className="alert alert-error mb-4">
+              <svg className="stroke-current shrink-0 h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{storesError}</span>
+              <button 
+                onClick={fetchStores}
+                className="btn btn-sm btn-ghost"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {/* ============================================================ */}
+
           <div className="form-control w-full max-w-xs">
             <label className="label">
-              <span className="label-text font-semibold text-gray-900">Filter by Store</span>
+              <span className="label-text font-semibold text-gray-900">
+                🏪 Filter by Store <span className="text-red-500">*</span>
+              </span>
             </label>
-            <select
-              value={selectedStore || ''}
-              onChange={(e) =>
-                setSelectedStore(e.target.value ? parseInt(e.target.value) : null)
-              }
-              className="select select-bordered bg-blue-50 text-gray-900"
-            >
-              <option value="">All Stores</option>
-              {stores.map((store) => (
-                <option key={store.id} value={store.id}>
-                  {store.name}
-                </option>
-              ))}
-            </select>
+            
+            {/* Loading State */}
+            {stores.length === 0 && !storesError && (
+              <div className="select select-bordered bg-gray-100 text-gray-600 font-medium">
+                <span className="loading loading-spinner loading-sm inline"></span> Loading stores...
+              </div>
+            )}
+
+            {/* Dropdown */}
+            {stores.length > 0 && (
+              <select
+                value={selectedStore || ''}
+                onChange={(e) => {
+                  const value = e.target.value ? parseInt(e.target.value) : null;
+                  setSelectedStore(value);
+                }}
+                className="select select-bordered bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">-- Select a store --</option>
+                {stores.map((store) => (
+                  <option key={store.id} value={store.id}>
+                    {store.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {!selectedStore && !storesError && stores.length > 0 && (
+              <label className="label pt-2">
+                <span className="label-text-alt text-red-600 font-medium">
+                  ⚠️ You must select a store to manage stocks
+                </span>
+              </label>
+            )}
           </div>
         </div>
       )}
@@ -299,27 +411,65 @@ export default function StocksPage() {
         </div>
       )}
 
+      {/* Warning: Super Admin without store selected */}
+      {isSuperAdminWithoutStore && (
+        <div className="alert alert-warning border-2 border-yellow-500 bg-yellow-50">
+          <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4v2m0 0v2m0-6v-2m0 0V7a2 2 0 012-2h.5a.5.5 0 00-.5.5v.5H9.5a.5.5 0 00-.5.5v.5a2 2 0 014 0m0 0a2 2 0 11-4 0m0 0V7a2 2 0 012-2z" />
+          </svg>
+          <div>
+            <h3 className="font-bold">Store Selection Required</h3>
+            <div className="text-sm">
+              Please select a store from the filter above to view and manage stocks.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stock List */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <div className="px-6 py-3 bg-gray-50 border-b">
           <p className="text-sm text-gray-600">
-            Showing {stocks.length} of {pagination.total} stocks
+            {isSuperAdminWithoutStore ? (
+              <span className="text-yellow-700 font-medium">
+                ⚠️ Select a store to see stocks
+              </span>
+            ) : (
+              <>
+                Showing {stocks.length} of {pagination.total} stocks
+              </>
+            )}
           </p>
         </div>
 
-        <StockList
-          stocks={stocks}
-          loading={loading}
-          onUpdate={(stock) => setUpdateModal({ isOpen: true, stock })}
-        />
-
-        {pagination.totalPages > 1 && (
-          <div className="p-4 border-t">
-            <Pagination
-              currentPage={pagination.page}
-              totalPages={pagination.totalPages}
-              onPageChange={(page) => fetchStocks(page)}
+        {/* Only show table if store is selected (or if StoreAdmin) */}
+        {!isSuperAdminWithoutStore ? (
+          <>
+            <StockList
+              stocks={stocks}
+              loading={loading}
+              onUpdate={handleOpenUpdateModal}
             />
+
+            {pagination.totalPages > 1 && (
+              <div className="p-4 border-t">
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={pagination.totalPages}
+                  onPageChange={(page) => fetchStocks(page)}
+                />
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="flex items-center justify-center py-16">
+            <div className="text-center">
+              <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 7-7V3m0 0v8m0-8h-8" />
+              </svg>
+              <p className="text-gray-500 font-medium">No store selected</p>
+              <p className="text-sm text-gray-400">Select a store above to view stocks</p>
+            </div>
           </div>
         )}
       </div>

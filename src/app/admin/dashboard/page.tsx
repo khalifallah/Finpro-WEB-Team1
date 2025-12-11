@@ -22,7 +22,6 @@ export default function DashboardPage() {
   });
   const [loading, setLoading] = useState(true);
 
-
   // Fetch dashboard stats (optional - bisa di-implement nanti)
   useEffect(() => {
     const fetchStats = async () => {
@@ -57,7 +56,7 @@ export default function DashboardPage() {
         </h1>
         <p className="mt-2 opacity-90">
           {isSuperAdmin 
-            ? 'You have full access to manage the entire system.' 
+            ? 'You have super admin access.' 
             : `You are managing store operations. Some features are read-only.`}
         </p>
         <div className="mt-4 flex items-center gap-2">
@@ -86,8 +85,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-
-      
 
       {/* Feature Overview */}
       <div>
@@ -140,23 +137,27 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Discount Management Card */}
-          <div className="card bg-white shadow-md">
-            <div className="card-body text-black">
-              <h3 className="card-title">🎁 Discount Management</h3>
-              <ul className="list-disc list-inside text-sm text-gray-600 space-y-1 mt-2">
-                <li>Create product discounts</li>
-                <li>Set minimum purchase discounts</li>
-                <li>Buy One Get One (BOGO) offers</li>
-                <li>Percentage or fixed amount discounts</li>
-              </ul>
-              <div className="card-actions justify-end mt-4">
-                <Link href="/admin/discounts" className="btn btn-primary btn-sm">
-                  Manage Discounts
-                </Link>
+          {/* ===================== Hide Discount Card for SUPER_ADMIN ===================== */}
+          {/* Discount Management Card - STORE_ADMIN ONLY */}
+          {!isSuperAdmin && (
+            <div className="card bg-white shadow-md">
+              <div className="card-body text-black">
+                <h3 className="card-title">🎁 Discount Management</h3>
+                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1 mt-2">
+                  <li>Create product discounts</li>
+                  <li>Set minimum purchase discounts</li>
+                  <li>Buy One Get One (BOGO) offers</li>
+                  <li>Percentage or fixed amount discounts</li>
+                </ul>
+                <div className="card-actions justify-end mt-4">
+                  <Link href="/admin/discounts" className="btn btn-primary btn-sm">
+                    Manage Discounts
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+          {/* ================================================================================= */}
 
           {/* Reports Card */}
           <div className="card bg-white shadow-md">
@@ -241,13 +242,15 @@ export default function DashboardPage() {
                   <td className="text-center text-green-500 text-lg">✅</td>
                   <td className="text-center text-green-500 text-lg">✅</td>
                 </tr>
+                {/* ===================== Discount - SUPER_ADMIN = All ❌ ===================== */}
                 <tr className="hover:bg-gray-50 bg-gray-100">
                   <td className="font-medium">Discounts</td>
-                  <td className="text-center text-green-500 text-lg">✅</td>
-                  <td className="text-center text-green-500 text-lg">✅</td>
-                  <td className="text-center text-green-500 text-lg">✅</td>
-                  <td className="text-center text-green-500 text-lg">✅</td>
+                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text-green-500">✅</span>}</td>
+                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text-green-500">✅</span>}</td>
+                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text-green-500">✅</span>}</td>
+                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text-green-500">✅</span>}</td>
                 </tr>
+                {/* ============================================================================ */}
                 <tr className="hover:bg-gray-50">
                   <td className="font-medium">
                     Sales Report
