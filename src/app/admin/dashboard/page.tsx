@@ -28,7 +28,7 @@ export default function DashboardPage() {
     const fetchStats = async () => {
       try {
         setLoading(true);
-        // TODO: Implement API call to get dashboard stats
+        // TODO: Implement API call to get dashboard stats - optional nice to have
         // const response = await dashboardService.getStats();
         // setStats(response);
         
@@ -40,7 +40,6 @@ export default function DashboardPage() {
           totalStores: 0,
         });
       } catch (error) {
-        console.error('Failed to fetch stats:', error);
       } finally {
         setLoading(false);
       }
@@ -210,7 +209,7 @@ export default function DashboardPage() {
           <h3 className="card-title mb-4">🔐 Your Access Permissions</h3>
           <div className="overflow-x-auto">
             <table className="table">
-              {/* ✅ Fixed: Header dengan background dan text yang visible */}
+              {/* Header */}
               <thead className="bg-gray-800 text-white">
                 <tr>
                   <th className="text-white font-semibold">Feature</th>

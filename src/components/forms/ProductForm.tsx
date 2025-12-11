@@ -62,7 +62,6 @@ export default function ProductForm({
           setCategories(data.categories || data || []);
         }
       } catch (error) {
-        console.error('Failed to fetch categories:', error);
       } finally {
         setLoadingCategories(false);
       }
@@ -282,9 +281,8 @@ export default function ProductForm({
           </span>
         </label>
         <ImageUpload
-          onImagesChange={handleImageChange}
-          maxImages={5}
-          error={errors.images}
+          onImagesSelected={handleImageChange}
+          maxFiles={5}
         />
         {errors.images && (
           <label className="label">

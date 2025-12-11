@@ -82,23 +82,19 @@ export default function UsersPage() {
     try {
       const token = localStorage.getItem('token');
       
-      // ✅ Use admin endpoint instead of /stores
+      // Use admin endpoint instead of /stores
       const url = `${getApiUrl()}/admin/stores`;
-      
-      console.log('📡 Fetching stores from:', url);
-      
+            
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
       if (!response.ok) {
-        console.error('❌ Stores fetch failed:', response.status);
         // Fallback to /stores endpoint
         return fetchStoresFallback();
       }
       
       const data = await response.json();
-      console.log('📦 Stores raw data:', data);
 
       let storesList: Store[] = [];
       
@@ -115,10 +111,8 @@ export default function UsersPage() {
         storesList = data;
       }
 
-      console.log('✅ Stores parsed:', storesList.length);
       setStores(storesList);
     } catch (error) {
-      console.error('❌ Failed to fetch stores:', error);
       fetchStoresFallback();
     }
   };
@@ -128,15 +122,12 @@ export default function UsersPage() {
     try {
       const token = localStorage.getItem('token');
       const url = `${getApiUrl()}/stores`;
-      
-      console.log('📡 Fallback: Fetching stores from:', url);
-      
+            
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
       const data = await response.json();
-      console.log('📦 Fallback stores data:', data);
 
       let storesList: Store[] = [];
       
@@ -152,10 +143,8 @@ export default function UsersPage() {
         storesList = data;
       }
 
-      console.log('✅ Fallback stores parsed:', storesList.length);
       setStores(storesList);
     } catch (error) {
-      console.error('❌ Fallback also failed:', error);
       setStores([]);
     }
   };
@@ -204,7 +193,6 @@ export default function UsersPage() {
       setUsers(usersList);
       setPagination({ page: pageNum, limit: limitNum, total: totalUsers, totalPages });
     } catch (error) {
-      console.error('Failed to fetch users:', error);
       setUsers([]);
     } finally {
       setLoading(false);
@@ -306,7 +294,6 @@ export default function UsersPage() {
       setDeleteConfirm({ isOpen: false });
       fetchUsers(pagination.page, searchQuery);
     } catch (error) {
-      console.error('Failed to delete user:', error);
     } finally {
       setLoading(false);
     }
@@ -422,7 +409,7 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* ✅ Using Extracted Components */}
+      {/* Using Extracted Components */}
       <UserFormModal
         isOpen={formModal.isOpen}
         mode={formModal.mode}

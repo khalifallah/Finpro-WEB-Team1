@@ -55,7 +55,6 @@ export default function StockCreateModal({
     e.preventDefault();
     e.stopPropagation();
     const value = parseInt(e.target.value, 10);
-    console.log('Product changed to:', value);
     setProductId(value);
   }, []);
 
@@ -64,7 +63,6 @@ export default function StockCreateModal({
     e.preventDefault();
     e.stopPropagation();
     const value = parseInt(e.target.value, 10);
-    console.log('Store changed to:', value);
     setStoreId(value);
   }, []);
 
@@ -73,7 +71,6 @@ export default function StockCreateModal({
     e.preventDefault();
     e.stopPropagation();
     const value = e.target.value;
-    console.log('Quantity changed to:', value);
     setQuantity(value);
   }, []);
 
@@ -102,11 +99,9 @@ export default function StockCreateModal({
 
     try {
       setLoading(true);
-      console.log('🔄 Submitting:', { productId, storeId: finalStoreId, quantity: qty });
       await onSubmit(productId, finalStoreId, qty);
       handleClose();
     } catch (err: any) {
-      console.error('❌ Submit error:', err);
       setError(err.message || 'Failed to create stock');
     } finally {
       setLoading(false);

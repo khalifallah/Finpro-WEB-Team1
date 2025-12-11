@@ -57,7 +57,6 @@ export default function DiscountUsagesPage() {
         setDiscountInfo(data.data || data);
       }
     } catch (e) {
-      console.error('Failed to fetch discount info:', e);
     }
   }, [discountId, getAuthHeaders]);
 
@@ -92,7 +91,6 @@ export default function DiscountUsagesPage() {
         setUsages([]);
       }
     } catch (e) {
-      console.error('Failed to fetch usages:', e);
       setUsages([]);
     } finally {
       setLoading(false);
