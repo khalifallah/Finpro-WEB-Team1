@@ -315,7 +315,7 @@ export default function CategoriesPage() {
           <div className="flex gap-3 justify-end pt-6 border-t border-gray-200">
             <button
               onClick={() => setFormModal({ isOpen: false, mode: 'create' })}
-              className="btn btn-ghost btn-md min-w-24"
+              className="btn btn-outline btn-md min-w-24 text-black  hover:text-gray-500 bg-red-200"
               disabled={formLoading}
             >
               Cancel
