@@ -383,7 +383,7 @@ export default function EditProductPage() {
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="btn btn-ghost"
+                className="btn btn-outline gap-2 text-black hover:text-gray-500 bg-red-200"
                 disabled={saving}
               >
                 Cancel
