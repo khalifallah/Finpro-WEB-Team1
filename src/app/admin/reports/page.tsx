@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import ReportTable, { ReportTableColumn } from '@/components/admin/reports/ReportTable';
+import Pagination from '@/components/common/Pagination';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   MonthlySalesReport,
@@ -16,6 +17,8 @@ interface Store { id: number; name: string; }
 type ReportType = 'sales' | 'stock';
 type SalesTab = 'monthly' | 'byCategory' | 'byProduct';
 type StockTab = 'summary' | 'detail';
+
+const ITEMS_PER_PAGE = 10;
 
 export default function ReportsPage() {
   const { user } = useAuth();
@@ -36,6 +39,13 @@ export default function ReportsPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
   const [loading, setLoading] = useState(false);
+
+  // ✅ PAGINATION STATES
+  const [currentPageSalesMonthly, setCurrentPageSalesMonthly] = useState(1);
+  const [currentPageSalesByCategory, setCurrentPageSalesByCategory] = useState(1);
+  const [currentPageSalesByProduct, setCurrentPageSalesByProduct] = useState(1);
+  const [currentPageStockSummary, setCurrentPageStockSummary] = useState(1);
+  const [currentPageStockDetail, setCurrentPageStockDetail] = useState(1);
 
   // Data states
   const [salesMonthly, setSalesMonthly] = useState<MonthlySalesReport[]>([]);
@@ -199,6 +209,15 @@ export default function ReportsPage() {
     [apiUrl, authHeaders, parseMonth, parseReportData]
   );
 
+  // ✅ Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPageSalesMonthly(1);
+    setCurrentPageSalesByCategory(1);
+    setCurrentPageSalesByProduct(1);
+    setCurrentPageStockSummary(1);
+    setCurrentPageStockDetail(1);
+  }, [storeIdToUse, selectedMonth]);
+
   // ===================== SALES MONTHLY =====================
   useEffect(() => {
     if (reportType === 'sales' && salesTab === 'monthly') {
@@ -233,6 +252,24 @@ export default function ReportsPage() {
       fetchReport('/reports/stock/detail', setStockDetail, storeIdToUse, selectedMonth);
     }
   }, [reportType, stockTab, storeIdToUse, selectedMonth, fetchReport]);
+
+  // ===================== PAGINATION HELPERS =====================
+  const getPaginatedData = useCallback((data: any[], currentPage: number) => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return data.slice(startIndex, endIndex);
+  }, []);
+
+  const getTotalPages = useCallback((dataLength: number) => {
+    return Math.ceil(dataLength / ITEMS_PER_PAGE);
+  }, []);
+
+  // ✅ Memoize paginated data
+  const paginatedSalesMonthly = useMemo(() => getPaginatedData(salesMonthly, currentPageSalesMonthly), [salesMonthly, currentPageSalesMonthly, getPaginatedData]);
+  const paginatedSalesByCategory = useMemo(() => getPaginatedData(salesByCategory, currentPageSalesByCategory), [salesByCategory, currentPageSalesByCategory, getPaginatedData]);
+  const paginatedSalesByProduct = useMemo(() => getPaginatedData(salesByProduct, currentPageSalesByProduct), [salesByProduct, currentPageSalesByProduct, getPaginatedData]);
+  const paginatedStockSummary = useMemo(() => getPaginatedData(stockSummary, currentPageStockSummary), [stockSummary, currentPageStockSummary, getPaginatedData]);
+  const paginatedStockDetail = useMemo(() => getPaginatedData(stockDetail, currentPageStockDetail), [stockDetail, currentPageStockDetail, getPaginatedData]);
 
   // ===================== COLUMNS =====================
   const salesMonthlyColumns: ReportTableColumn<MonthlySalesReport>[] = [
@@ -482,9 +519,45 @@ export default function ReportsPage() {
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-            {salesTab === 'monthly' && <ReportTable columns={salesMonthlyColumns} data={salesMonthly} loading={loading} emptyMessage="No sales data available" />}
-            {salesTab === 'byCategory' && <ReportTable columns={salesCategoryColumns} data={salesByCategory} loading={loading} emptyMessage="No category data available" />}
-            {salesTab === 'byProduct' && <ReportTable columns={salesProductColumns} data={salesByProduct} loading={loading} emptyMessage="No product sales data available" />}
+            {salesTab === 'monthly' && (
+              <>
+                <ReportTable columns={salesMonthlyColumns} data={paginatedSalesMonthly} loading={loading} emptyMessage="No sales data available" />
+                <div className="p-4 border-t">
+                  <Pagination 
+                    currentPage={currentPageSalesMonthly}
+                    totalPages={getTotalPages(salesMonthly.length)}
+                    onPageChange={setCurrentPageSalesMonthly}
+                    showInfo
+                  />
+                </div>
+              </>
+            )}
+            {salesTab === 'byCategory' && (
+              <>
+                <ReportTable columns={salesCategoryColumns} data={paginatedSalesByCategory} loading={loading} emptyMessage="No category data available" />
+                <div className="p-4 border-t">
+                  <Pagination 
+                    currentPage={currentPageSalesByCategory}
+                    totalPages={getTotalPages(salesByCategory.length)}
+                    onPageChange={setCurrentPageSalesByCategory}
+                    showInfo
+                  />
+                </div>
+              </>
+            )}
+            {salesTab === 'byProduct' && (
+              <>
+                <ReportTable columns={salesProductColumns} data={paginatedSalesByProduct} loading={loading} emptyMessage="No product sales data available" />
+                <div className="p-4 border-t">
+                  <Pagination 
+                    currentPage={currentPageSalesByProduct}
+                    totalPages={getTotalPages(salesByProduct.length)}
+                    onPageChange={setCurrentPageSalesByProduct}
+                    showInfo
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -504,8 +577,32 @@ export default function ReportsPage() {
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-            {stockTab === 'summary' && <ReportTable columns={stockSummaryColumns} data={stockSummary} loading={loading} emptyMessage="No stock data available" />}
-            {stockTab === 'detail' && <ReportTable columns={stockDetailColumns} data={stockDetail} loading={loading} emptyMessage="No stock history available" />}
+            {stockTab === 'summary' && (
+              <>
+                <ReportTable columns={stockSummaryColumns} data={paginatedStockSummary} loading={loading} emptyMessage="No stock data available" />
+                <div className="p-4 border-t">
+                  <Pagination 
+                    currentPage={currentPageStockSummary}
+                    totalPages={getTotalPages(stockSummary.length)}
+                    onPageChange={setCurrentPageStockSummary}
+                    showInfo
+                  />
+                </div>
+              </>
+            )}
+            {stockTab === 'detail' && (
+              <>
+                <ReportTable columns={stockDetailColumns} data={paginatedStockDetail} loading={loading} emptyMessage="No stock history available" />
+                <div className="p-4 border-t">
+                  <Pagination 
+                    currentPage={currentPageStockDetail}
+                    totalPages={getTotalPages(stockDetail.length)}
+                    onPageChange={setCurrentPageStockDetail}
+                    showInfo
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
