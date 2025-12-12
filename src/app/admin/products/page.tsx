@@ -117,13 +117,13 @@ export default function ProductPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+      {/* Header - ✅ RESPONSIVE */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Products</h1>
           <p className="text-gray-600 mt-2 text-sm">Manage all products ({pagination.total} total)</p>
         </div>
-        <Link href="/admin/products/new" className="btn btn-primary gap-2">
+        <Link href="/admin/products/new" className="btn btn-primary gap-2 w-full sm:w-auto">
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
           </svg>
@@ -141,15 +141,15 @@ export default function ProductPage() {
         </div>
       )}
 
-      {/* Search */}
-      <div className="bg-gray-100 p-4 rounded-lg shadow-sm border border-gray-300">
+      {/* Search - ✅ RESPONSIVE */}
+      <div className="bg-gray-100 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-300">
         <SearchBar value={searchQuery} onChange={handleSearch} placeholder="Search products..." />
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         {products.length > 0 && (
-          <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+          <div className="px-4 py-2 sm:px-6 sm:py-3 bg-gray-50 border-b border-gray-200">
             <p className="text-sm text-gray-600 font-medium">
               Showing {(pagination.page - 1) * pagination.limit + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} products
             </p>

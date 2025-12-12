@@ -199,9 +199,9 @@ export default function DiscountUsagesPage() {
         </div>
       </div>
 
-      {/* Discount Info Card */}
+      {/* Discount Info Card - ✅ RESPONSIVE */}
       {discountInfo && (
-        <div className="bg-white rounded-lg border shadow-sm p-6">
+        <div className="bg-white rounded-lg border shadow-sm p-4 sm:p-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-gray-900">{discountInfo.description}</h2>
@@ -235,9 +235,9 @@ export default function DiscountUsagesPage() {
         </div>
       )}
 
-      {/* Summary Cards */}
+      {/* Summary Cards - ✅ RESPONSIVE */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-5 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-4 sm:p-5 text-white shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-100 text-sm font-medium">Total Times Used</p>
@@ -247,7 +247,7 @@ export default function DiscountUsagesPage() {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-5 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 sm:p-5 text-white shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-100 text-sm font-medium">Total Discount Given</p>
@@ -257,7 +257,7 @@ export default function DiscountUsagesPage() {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-5 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 sm:p-5 text-white shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-sm font-medium">Avg. Discount/Order</p>
@@ -272,9 +272,9 @@ export default function DiscountUsagesPage() {
         </div>
       </div>
 
-      {/* Usage Table */}
+      {/* Usage Table - ✅ RESPONSIVE */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        <div className="p-4 border-b bg-gray-50">
+        <div className="p-3 sm:p-4 border-b bg-gray-50">
           <h3 className="font-semibold text-gray-900">Usage History</h3>
           <p className="text-sm text-gray-500">All orders that used this discount</p>
         </div>
@@ -299,7 +299,7 @@ export default function DiscountUsagesPage() {
         )}
       </div>
 
-      {/* Export Button */}
+      {/* Export Button - ✅ RESPONSIVE */}
       <div className="flex justify-end">
         <button 
           onClick={() => {
@@ -324,7 +324,7 @@ export default function DiscountUsagesPage() {
             a.download = `discount-usage-${discountId}-${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
           }}
-          className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 font-medium flex items-center gap-2"
+          className="px-3 py-2 sm:px-4 sm:py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 font-medium flex items-center gap-2"
         >
           📥 Export CSV
         </button>

@@ -174,8 +174,8 @@ export default function CategoriesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+      {/* Header - ✅ RESPONSIVE */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Categories</h1>
           <p className="text-gray-600 mt-1">
@@ -183,7 +183,7 @@ export default function CategoriesPage() {
           </p>
         </div>
         {isSuperAdmin && (
-          <button onClick={handleCreate} className="btn btn-primary gap-2">
+          <button onClick={handleCreate} className="btn btn-primary gap-2 w-full sm:w-auto">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
             </svg>
@@ -201,15 +201,15 @@ export default function CategoriesPage() {
       {/* Error Alert */}
       {error && (
         <div className="alert alert-error gap-3 rounded-lg border border-red-300 bg-red-50">
-          <svg className="stroke-current shrink-0 h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <svg className="stroke-current shrink-0 h-6 w-6" xmlns="http://www.w3.org/2000/2000" fill="none" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span className="text-sm font-medium">{error}</span>
         </div>
       )}
 
-      {/* Search */}
-      <div className="bg-gray-100 p-4 rounded-lg shadow-sm border border-gray-300">
+      {/* Search - ✅ RESPONSIVE */}
+      <div className="bg-gray-100 p-2 sm:p-4 rounded-lg shadow-sm border border-gray-300">
         <SearchBar
           value={searchQuery}
           onChange={handleSearch}
@@ -217,25 +217,27 @@ export default function CategoriesPage() {
         />
       </div>
 
-      {/* Table - Menggunakan CategoryList Component */}
+      {/* Table - ✅ RESPONSIVE */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         {categories.length > 0 && (
-          <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+          <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200">
             <p className="text-sm text-gray-600 font-medium">
               Showing {(pagination.page - 1) * pagination.limit + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} categories
             </p>
           </div>
         )}
 
-        <CategoryList
-          categories={categories}
-          loading={loading}
-          isSuperAdmin={isSuperAdmin}
-          onEdit={handleEdit}
-          onDelete={(id, name) =>
-            setDeleteConfirm({ isOpen: true, categoryId: id, categoryName: name })
-          }
-        />
+        <div className="overflow-x-auto">
+          <CategoryList
+            categories={categories}
+            loading={loading}
+            isSuperAdmin={isSuperAdmin}
+            onEdit={handleEdit}
+            onDelete={(id, name) =>
+              setDeleteConfirm({ isOpen: true, categoryId: id, categoryName: name })
+            }
+          />
+        </div>
 
         {pagination.totalPages > 1 && (
           <div className="p-4 border-t border-gray-200 bg-gray-50">

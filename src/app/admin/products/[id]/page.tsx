@@ -345,7 +345,7 @@ export default function EditProductPage() {
         {/* Form */}
         <form onSubmit={handleSubmit}>
           <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-            <div className="p-8 space-y-8">
+            <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
               {/* Product Form Fields */}
               <ProductEditForm
                 formData={formData}
@@ -378,8 +378,8 @@ export default function EditProductPage() {
               />
             </div>
 
-            {/* Form Actions */}
-            <div className="px-8 py-6 border-t border-gray-200 bg-gray-50 flex gap-4 justify-end">
+            {/* Form Actions - ✅ RESPONSIVE */}
+            <div className="px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 border-t border-gray-200 bg-gray-50 flex gap-4 justify-end">
               <button
                 type="button"
                 onClick={() => router.back()}

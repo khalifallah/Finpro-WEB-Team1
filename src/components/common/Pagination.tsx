@@ -48,41 +48,70 @@ export default function Pagination({
   const visiblePages = getVisiblePages();
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mt-8 px-2">
+      {/* Info Section */}
       {showInfo && (
-        <div className="text-sm text-gray-600">
-          Page {currentPage} of {totalPages}
+        <div className="text-sm font-medium text-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-2 rounded-lg border border-blue-200">
+          <span className="text-gray-900 font-semibold">
+            Page {currentPage}
+          </span>
+          <span className="text-gray-500 mx-2">of</span>
+          <span className="text-gray-900 font-semibold">{totalPages}</span>
         </div>
       )}
 
-      <div className="join">
+      {/* Pagination Buttons */}
+      <div className="flex items-center gap-2">
+        {/* Previous Button */}
         <button
-          className="join-item btn btn-sm"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
+          className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
+            currentPage === 1
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg active:scale-95'
+          }`}
+          title="Halaman Sebelumnya"
         >
-          «
+          ← Prev
         </button>
 
-        {visiblePages.map((page, index) => (
-          <button
-            key={index}
-            className={`join-item btn btn-sm ${
-              page === currentPage ? 'btn-active' : ''
-            }`}
-            onClick={() => typeof page === 'number' && onPageChange(page)}
-            disabled={page === '...'}
-          >
-            {page}
-          </button>
-        ))}
+        {/* Page Numbers */}
+        <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 rounded-lg border border-gray-200">
+          {visiblePages.map((page, index) => (
+            <button
+              key={index}
+              onClick={() => typeof page === 'number' && onPageChange(page)}
+              disabled={page === '...'}
+              className={`
+                px-3 py-2 rounded-md font-medium transition-all duration-200 text-sm
+                ${
+                  page === currentPage
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg font-bold'
+                    : page === '...'
+                    ? 'text-gray-500 cursor-default'
+                    : 'bg-white text-gray-700 hover:bg-blue-100 hover:text-blue-700 border border-gray-300 hover:border-blue-400 cursor-pointer'
+                }
+              `}
+              title={typeof page === 'number' ? `Ke halaman ${page}` : undefined}
+            >
+              {page}
+            </button>
+          ))}
+        </div>
 
+        {/* Next Button */}
         <button
-          className="join-item btn btn-sm"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
+          className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
+            currentPage === totalPages
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg active:scale-95'
+          }`}
+          title="Halaman Berikutnya"
         >
-          »
+          Next →
         </button>
       </div>
     </div>

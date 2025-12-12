@@ -317,13 +317,13 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+      {/* Header - ✅ RESPONSIVE */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-black">👥 User Management</h1>
           <p className="text-black mt-2 text-sm">Manage system users and store admin accounts</p>
         </div>
-        <button onClick={handleCreate} className="btn btn-primary gap-2">
+        <button onClick={handleCreate} className="btn btn-primary gap-2 w-full sm:w-auto">
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
           </svg>
@@ -331,8 +331,8 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {/* Search & Filter */}
-      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 space-y-4">
+      {/* Search & Filter - ✅ RESPONSIVE */}
+      <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200 space-y-4">
         <SearchBar value={searchQuery} onChange={handleSearch} placeholder="Search by email or name..." />
         <div>
           <label className="label">
@@ -363,12 +363,12 @@ export default function UsersPage() {
               <table className="table">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="text-gray-700">Email</th>
-                    <th className="text-gray-700">Full Name</th>
-                    <th className="text-gray-700">Role</th>
-                    <th className="text-gray-700">Store</th>
-                    <th className="text-gray-700">Status</th>
-                    <th className="text-gray-700">Actions</th>
+                    <th className="px-4 py-2 sm:px-6 sm:py-3 text-gray-700">Email</th>
+                    <th className="px-4 py-2 sm:px-6 sm:py-3 text-gray-700">Full Name</th>
+                    <th className="px-4 py-2 sm:px-6 sm:py-3 text-gray-700">Role</th>
+                    <th className="px-4 py-2 sm:px-6 sm:py-3 text-gray-700">Store</th>
+                    <th className="px-4 py-2 sm:px-6 sm:py-3 text-gray-700">Status</th>
+                    <th className="px-4 py-2 sm:px-6 sm:py-3 text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody>

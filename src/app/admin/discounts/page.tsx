@@ -233,16 +233,16 @@ export default function DiscountsPage() {
         <div className="flex gap-2 justify-end">
           {/* See Usage Button */}
           <button onClick={() => handleViewUsage(value)}
-            className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-sm"
+            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-sm"
             title="View Usage Report">
             📈 Usage
           </button>
           <button onClick={() => handleEdit(item)}
-            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm">
+            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm">
             ✏️ Edit
           </button>
           <button onClick={() => setDeleteConfirm({ isOpen: true, discountId: value, discountName: item.description })}
-            className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-sm">
+            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-sm">
             🗑️
           </button>
         </div>
@@ -253,7 +253,7 @@ export default function DiscountsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header - ✅ RESPONSIVE */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Discount Management</h1>
@@ -262,7 +262,7 @@ export default function DiscountsPage() {
           </p>
         </div>
         <button onClick={handleCreate} disabled={!isSuperAdmin && !userStoreId}
-          className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2 disabled:opacity-50">
+          className="px-4 py-2 sm:px-5 sm:py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2 disabled:opacity-50 w-full sm:w-auto">
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
           </svg>
@@ -270,9 +270,9 @@ export default function DiscountsPage() {
         </button>
       </div>
 
-      {/* Store Filter (Super Admin) */}
+      {/* Store Filter (Super Admin) - ✅ RESPONSIVE */}
       {isSuperAdmin && (
-        <div className="bg-white p-4 rounded-lg border shadow-sm">
+        <div className="bg-white p-3 sm:p-4 rounded-lg border shadow-sm">
           <label className="block text-sm font-semibold text-gray-700 mb-2">Filter by Store</label>
           <select value={selectedStore || ''} onChange={(e) => setSelectedStore(e.target.value ? parseInt(e.target.value) : null)}
             className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white">
@@ -282,9 +282,9 @@ export default function DiscountsPage() {
         </div>
       )}
 
-      {/* Store Admin Info */}
+      {/* Store Admin Info - ✅ RESPONSIVE */}
       {!isSuperAdmin && (
-        <div className={`rounded-lg p-4 flex items-center gap-3 border ${userStoreId ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'}`}>
+        <div className={`rounded-lg p-3 sm:p-4 flex items-center gap-3 border ${userStoreId ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'}`}>
           <span className="text-2xl">{userStoreId ? '🏪' : '⚠️'}</span>
           <div>
             <p className={`font-semibold ${userStoreId ? 'text-green-800' : 'text-red-800'}`}>
