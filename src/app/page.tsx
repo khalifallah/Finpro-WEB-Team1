@@ -27,6 +27,26 @@ export default function Home() {
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
+    console.log("🔄 Homepage data updated:", homepageData);
+    console.log("🔄 Products:", homepageData?.productList?.products);
+
+    if (homepageData?.productList?.products?.length > 0) {
+      console.log(
+        "🔄 First product details:",
+        homepageData.productList.products[0]
+      );
+      console.log(
+        "🔄 First product images:",
+        homepageData.productList.products[0]?.images
+      );
+      console.log(
+        "🔄 First product productImages:",
+        homepageData.productList.products[0]?.productImages
+      );
+    }
+  }, [homepageData]);
+
+  useEffect(() => {
     fetchHomepageData();
   }, []);
 
@@ -110,25 +130,64 @@ export default function Home() {
 
       const params: any = {};
 
-      // Build query params if location is provided
       if (storeIdOverride) {
         params.storeId = storeIdOverride;
-      }
-      // Jika tidak ada storeId manual, baru kirim koordinat (Auto)
-      else if (latitude && longitude) {
+      } else if (latitude && longitude) {
         params.lat = latitude;
         params.lng = longitude;
       }
-      // Fetch homepage data directly
+
+      console.log("Request params:", params);
+
       const response = await axiosInstance.get("/homepage", {
         params,
         timeout: 15000,
       });
 
-      console.log("Homepage data response:", response.data);
+      console.log("Full API Response:", response);
+      console.log("Response data:", response.data);
+      console.log("Response data.data:", response.data?.data);
 
       if (response.data.status === 200 || response.data.status === "success") {
-        setHomepageData(response.data.data);
+        let homepageData = response.data.data;
+
+        // Transform the products to match frontend expectations
+        if (homepageData?.productList?.products) {
+          homepageData.productList.products =
+            homepageData.productList.products.map((product: any) => {
+              // Handle different image structures
+              let images = [];
+
+              if (product.images) {
+                // If images is array of strings
+                if (
+                  Array.isArray(product.images) &&
+                  product.images.length > 0
+                ) {
+                  if (typeof product.images[0] === "string") {
+                    images = product.images.map(
+                      (url: string, index: number) => ({
+                        id: index,
+                        imageUrl: url,
+                      })
+                    );
+                  } else if (product.images[0].imageUrl) {
+                    // If already in correct format
+                    images = product.images;
+                  }
+                }
+              }
+
+              return {
+                ...product,
+                images: images,
+                // Also handle price field
+                price: product.price || product.defaultPrice || 0,
+              };
+            });
+        }
+
+        setHomepageData(homepageData);
       } else {
         throw new Error(
           response.data.message || "Failed to load homepage data"
@@ -177,7 +236,7 @@ export default function Home() {
             {
               id: 1,
               imageUrl:
-                "https://via.placeholder.com/1200x400?text=Welcome+to+Beyond+Market",
+                "https://placeholder.pics/svg/1200x400/DEDEDE/555555/Welcome%20to%20Beyond%20Market",
               title: "Welcome to Beyond Market",
               subtitle: "Your one-stop grocery shop",
               ctaText: "Shop Now",
@@ -282,6 +341,14 @@ export default function Home() {
       </div>
     );
   }
+
+  console.log(
+    "Homepage data product images:",
+    homepageData?.productList?.products?.map((p: any) => ({
+      name: p.name,
+      images: p.images, // Check the structure here
+    }))
+  );
 
   // Fix the add to cart function in ProductCard component
   const handleAddToCart = async (product: any, quantity: number = 1) => {

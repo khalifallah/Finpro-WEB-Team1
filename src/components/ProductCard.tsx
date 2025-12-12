@@ -3,11 +3,11 @@
 import React, { useState } from "react";
 import { ProductResponse } from "@/types/product.types";
 import { useAuth } from "@/hooks/useAuth";
+import CloudinaryImage from "./CloudinaryImage";
 
 interface ProductCardProps {
   product: ProductResponse;
   onViewDetails?: () => void;
-  // [UPDATE 1] Ubah tipe function agar menerima product dan quantity
   onAddToCart?: (product: ProductResponse, quantity: number) => void;
 }
 
@@ -19,9 +19,30 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [quantity, setQuantity] = useState(1);
   const { isAuthenticated } = useAuth();
 
-  const imageUrl =
-    product.productImages?.[0]?.imageUrl ||
-    "https://via.placeholder.com/300x200";
+  console.log("🎴 ProductCard rendering product:", product);
+  console.log("🎴 Product images:", product.images);
+
+  // Get the first image URL
+  const getFirstImageUrl = () => {
+    if (!product.images || product.images.length === 0) {
+      return "";
+    }
+
+    const firstImage = product.images[0];
+    console.log("🎴 First image object:", firstImage);
+
+    // Handle different possible structures
+    if (typeof firstImage === "string") {
+      return firstImage;
+    } else if (firstImage && firstImage.imageUrl) {
+      return firstImage.imageUrl;
+    }
+
+    return "";
+  };
+
+  const imageUrl = getFirstImageUrl();
+  console.log("🎴 Final image URL:", imageUrl);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -40,7 +61,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
     console.log("Added to cart:", product.name, "Qty:", quantity);
 
-    // [UPDATE 2] Kirim data product DAN quantity ke parent (page.tsx)
     if (onAddToCart) {
       onAddToCart(product, quantity);
     }
@@ -57,10 +77,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
     <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300">
       {/* Product Image */}
       <figure className="relative h-48 overflow-hidden">
-        <img
+        <CloudinaryImage
           src={imageUrl}
           alt={product.name}
-          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+          width={300}
+          height={200}
+          className="w-full h-48 object-cover hover:scale-105 transition-transform duration-300"
         />
         {/* Badges */}
         <div className="absolute top-2 left-2">
@@ -136,7 +158,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           <button
             className="btn btn-primary btn-sm flex-1"
             onClick={handleAddToCart}
-            disabled={isOutOfStock} // Biarkan tombol aktif walau belum login, nanti redirect
+            disabled={isOutOfStock}
           >
             {!isAuthenticated ? (
               <>
