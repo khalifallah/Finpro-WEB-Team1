@@ -5,8 +5,8 @@ export interface ProductQuery {
   storeId?: number;
   page?: number;
   limit?: number;
-  sortBy?: 'name' | 'price' | 'createdAt';
-  sortOrder?: 'asc' | 'desc';
+  sortBy?: "name" | "price" | "createdAt";
+  sortOrder?: "asc" | "desc";
 }
 
 export interface CreateProductRequest {
@@ -35,11 +35,11 @@ export interface ProductResponse {
   description: string;
   price: number;
   category: { id: number; name: string };
-  productImages: Array<{ id: number; imageUrl: string }>;
+  // Change from productImages to images
+  images: Array<{ id: number; imageUrl: string }>;
   stock: number;
   canAddToCart: boolean;
 }
-
 /**
  * Pagination Info (sesuai backend)
  */

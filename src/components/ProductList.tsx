@@ -20,6 +20,9 @@ const ProductList: React.FC<ProductListProps> = ({
   loading,
   onAddToCart,
 }) => {
+  console.log("📦 ProductList received products:", products);
+  console.log("📦 Number of products:", products?.length);
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -31,6 +34,18 @@ const ProductList: React.FC<ProductListProps> = ({
             <div className="skeleton h-4 w-full"></div>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (!products || products.length === 0) {
+    console.log("📦 No products to display");
+    return (
+      <div className="text-center py-10">
+        <h3 className="text-lg font-semibold text-gray-600">
+          No products found
+        </h3>
+        <p className="text-gray-500">Try changing your search or filters</p>
       </div>
     );
   }
