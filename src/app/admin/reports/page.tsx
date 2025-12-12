@@ -38,6 +38,51 @@ export default function ReportsPage() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
+
+  // ✅ NEW: Separate month and year states for better UX
+  const [selectedMonthNum, setSelectedMonthNum] = useState(() => {
+    const now = new Date();
+    return String(now.getMonth() + 1).padStart(2, '0');
+  });
+
+  const [selectedYear, setSelectedYear] = useState(() => {
+    const now = new Date();
+    return String(now.getFullYear());
+  });
+
+  // ✅ NEW: Generate year options (current year - 5 to current year + 1)
+  const generateYearOptions = () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const years = [];
+    for (let i = currentYear - 5; i <= currentYear + 1; i++) {
+      years.push(i);
+    }
+    return years.reverse();
+  };
+
+  const monthOptions = [
+    { value: '01', label: 'January' },
+    { value: '02', label: 'February' },
+    { value: '03', label: 'March' },
+    { value: '04', label: 'April' },
+    { value: '05', label: 'May' },
+    { value: '06', label: 'June' },
+    { value: '07', label: 'July' },
+    { value: '08', label: 'August' },
+    { value: '09', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
+  ];
+
+  // ✅ NEW: Handle month/year change
+  const handleMonthYearChange = (month: string, year: string) => {
+    setSelectedMonthNum(month);
+    setSelectedYear(year);
+    setSelectedMonth(`${year}-${month}`);
+  };
+
   const [loading, setLoading] = useState(false);
 
   // ✅ PAGINATION STATES
@@ -405,9 +450,9 @@ export default function ReportsPage() {
         </button>
       </div>
 
-      {/* Filters - ✅ RESPONSIVE */}
+      {/* Filters - ✅ IMPROVED */}
       <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border space-y-4">
-        {/* ✅ SUPER_ADMIN ONLY: Store Filter */}
+        {/* SUPER_ADMIN ONLY: Store Filter */}
         {isSuperAdmin && (
           <div className="border-b pb-4">
             {storesError && (
@@ -420,7 +465,7 @@ export default function ReportsPage() {
 
             <div className="form-control w-full max-w-xs">
               <label className="label">
-                <span className="label-text font-semibold text-gray-900">
+                <span className="label-text font-semibold text-gray-900 bg-green-100 px-2 py-1 rounded-lg">
                   🏪 Filter by Store <span className="text-red-500">*</span>
                 </span>
               </label>
@@ -438,7 +483,7 @@ export default function ReportsPage() {
                     const storeId = e.target.value ? parseInt(e.target.value) : null;
                     setSelectedStore(storeId);
                   }}
-                  className="select select-bordered bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="select select-bordered text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-primary bg-gray-100 my-1.5 rounded-lg"
                 >
                   <option value="">-- Select a store --</option>
                   {stores.map((store) => (
@@ -458,7 +503,7 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {/* ✅ STORE_ADMIN ONLY: Info Badge */}
+        {/* STORE_ADMIN ONLY: Info Badge */}
         {!isSuperAdmin && (
           <div className="alert alert-info">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
@@ -468,13 +513,46 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {/* Month Filter */}
-        <div className="form-control w-full max-w-xs">
+        {/* ✅ IMPROVED Month & Year Filter */}
+        <div className="form-control w-full max-w-md">
           <label className="label">
-            <span className="label-text font-semibold text-gray-900">📅 Month</span>
+            <span className="label-text font-semibold text-gray-900">📅 Select Month & Year</span>
           </label>
-          <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}
-            className="input input-bordered bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-primary" />
+          
+          <div className="flex gap-2">
+            {/* Month Dropdown */}
+            <select
+              value={selectedMonthNum}
+              onChange={(e) => handleMonthYearChange(e.target.value, selectedYear)}
+              className="select select-bordered flex-1 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-primary bg-gray-100"
+            >
+              {monthOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Year Dropdown */}
+            <select
+              value={selectedYear}
+              onChange={(e) => handleMonthYearChange(selectedMonthNum, e.target.value)}
+              className="select select-bordered w-24 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-primary bg-gray-100"
+            >
+              {generateYearOptions().map((year) => (
+                <option key={year} value={String(year)}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Display Current Selection */}
+          <label className="label pt-2">
+            <span className="label-text-alt text-blue-600 font-medium">
+              📌 Currently viewing: <strong>{monthOptions.find(m => m.value === selectedMonthNum)?.label} {selectedYear}</strong>
+            </span>
+          </label>
         </div>
       </div>
 
