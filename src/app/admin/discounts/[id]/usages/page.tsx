@@ -153,7 +153,6 @@ export default function DiscountUsagesPage() {
       header: 'Customer',
       render: (value: DiscountUsage['order']) => (
         <div>
-          <p className="font-semibold text-gray-900">{value?.user?.name || 'Unknown'}</p>
           <p className="text-sm text-gray-500">{value?.user?.email || '-'}</p>
         </div>
       ),
@@ -305,11 +304,10 @@ export default function DiscountUsagesPage() {
           onClick={() => {
             // Simple CSV export
             const csvContent = [
-              ['Usage ID', 'Order ID', 'Customer', 'Email', 'Discount Amount', 'Order Total', 'Used At'],
+              ['Usage ID', 'Order ID', 'Email', 'Discount Amount', 'Order Total', 'Used At'],
               ...usages.map(u => [
                 u.id,
                 u.orderId,
-                u.order?.user?.name || 'Unknown',
                 u.order?.user?.email || '-',
                 u.amount,
                 u.order?.totalAmount || 0,
@@ -324,7 +322,7 @@ export default function DiscountUsagesPage() {
             a.download = `discount-usage-${discountId}-${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
           }}
-          className="px-3 py-2 sm:px-4 sm:py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 font-medium flex items-center gap-2"
+          className="px-3 py-2 sm:px-4 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex items-center gap-2"
         >
           📥 Export CSV
         </button>
