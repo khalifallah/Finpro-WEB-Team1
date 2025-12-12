@@ -70,7 +70,6 @@ export default function ReportsPage() {
   // ✅ Initialize selectedStore for STORE_ADMIN
   useEffect(() => {
     if (!isSuperAdmin && userStoreId) {
-      console.log(`🏪 STORE_ADMIN detected, setting store to: ${userStoreId}`);
       setSelectedStore(userStoreId);
     }
   }, [isSuperAdmin, userStoreId]);
@@ -125,13 +124,11 @@ export default function ReportsPage() {
 
     try {
       setStoresError('');
-      console.log('📦 Fetching stores...');
       const response = await fetch(`${apiUrl}/stores`, { headers: authHeaders });
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const data = await response.json();
-      console.log('✅ Stores response:', data);
 
       let storesList: Store[] = [];
       
@@ -149,7 +146,6 @@ export default function ReportsPage() {
         );
       }
 
-      console.log('📦 Parsed stores:', storesList);
       setStores(storesList);
     } catch (error: any) {
       console.error('❌ Error fetching stores:', error);
@@ -168,7 +164,6 @@ export default function ReportsPage() {
     async (endpoint: string, setter: any, storeId: number | null, month: string) => {
       // ✅ Guard: don't fetch without store
       if (!storeId) {
-        console.log(`⏭️ Skipping fetch - no store for ${endpoint}`);
         setter([]);
         return;
       }
@@ -183,7 +178,6 @@ export default function ReportsPage() {
         params.append('year', String(year));
 
         const url = `${apiUrl}${endpoint}?${params}`;
-        console.log(`📊 Fetching ${endpoint}:`, { storeId, month: monthNum, year });
 
         const response = await fetch(url, { headers: authHeaders });
 
@@ -194,10 +188,8 @@ export default function ReportsPage() {
         }
 
         const data = await response.json();
-        console.log(`✅ ${endpoint} response:`, data);
 
         const parsed = parseReportData(data);
-        console.log(`📊 ${endpoint} parsed:`, parsed);
         setter(parsed);
       } catch (error) {
         console.error(`❌ Error on ${endpoint}:`, error);
@@ -393,28 +385,28 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header - ✅ RESPONSIVE */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">📊 Reports & Analysis</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">📊 Reports & Analysis</h1>
         <p className="text-gray-600 mt-1">
           {isSuperAdmin ? 'View reports for all stores' : `View reports for ${user?.store?.name || 'your store'}`}
         </p>
       </div>
 
-      {/* Report Type */}
-      <div className="flex gap-3">
+      {/* Report Type - ✅ RESPONSIVE */}
+      <div className="flex flex-wrap gap-2 sm:gap-3">
         <button onClick={() => setReportType('sales')}
-          className={`px-5 py-3 rounded-lg font-semibold transition-all ${reportType === 'sales' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'}`}>
+          className={`px-3 py-2 sm:px-5 sm:py-3 rounded-lg font-semibold transition-all ${reportType === 'sales' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'}`}>
           💰 Sales Report
         </button>
         <button onClick={() => setReportType('stock')}
-          className={`px-5 py-3 rounded-lg font-semibold transition-all ${reportType === 'stock' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'}`}>
+          className={`px-3 py-2 sm:px-5 sm:py-3 rounded-lg font-semibold transition-all ${reportType === 'stock' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'}`}>
           📦 Stock Report
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border space-y-4">
+      {/* Filters - ✅ RESPONSIVE */}
+      <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border space-y-4">
         {/* ✅ SUPER_ADMIN ONLY: Store Filter */}
         {isSuperAdmin && (
           <div className="border-b pb-4">
@@ -444,7 +436,6 @@ export default function ReportsPage() {
                   value={selectedStore || ''}
                   onChange={(e) => {
                     const storeId = e.target.value ? parseInt(e.target.value) : null;
-                    console.log(`🏪 SUPER_ADMIN selected store: ${storeId}`);
                     setSelectedStore(storeId);
                   }}
                   className="select select-bordered bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-primary"
@@ -503,17 +494,17 @@ export default function ReportsPage() {
       {/* Sales Report */}
       {reportType === 'sales' && !isSuperAdminWithoutStore && (
         <div className="space-y-4">
-          <div className="flex gap-3 border-b">
+          <div className="flex flex-wrap gap-2 sm:gap-3 border-b">
             <button onClick={() => setSalesTab('monthly')}
-              className={`px-4 py-3 font-semibold border-b-2 transition-all ${salesTab === 'monthly' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
+              className={`px-3 py-2 sm:px-4 sm:py-3 font-semibold border-b-2 transition-all ${salesTab === 'monthly' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
               📅 Monthly
             </button>
             <button onClick={() => setSalesTab('byCategory')}
-              className={`px-4 py-3 font-semibold border-b-2 transition-all ${salesTab === 'byCategory' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
+              className={`px-3 py-2 sm:px-4 sm:py-3 font-semibold border-b-2 transition-all ${salesTab === 'byCategory' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text_gray-900'}`}>
               🏷️ By Category
             </button>
             <button onClick={() => setSalesTab('byProduct')}
-              className={`px-4 py-3 font-semibold border-b-2 transition-all ${salesTab === 'byProduct' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
+              className={`px-3 py-2 sm:px-4 sm:py-3 font-semibold border-b-2 transition-all ${salesTab === 'byProduct' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
               📦 By Product
             </button>
           </div>
@@ -565,13 +556,13 @@ export default function ReportsPage() {
       {/* Stock Report */}
       {reportType === 'stock' && !isSuperAdminWithoutStore && (
         <div className="space-y-4">
-          <div className="flex gap-3 border-b">
+          <div className="flex flex-wrap gap-2 sm:gap-3 border-b">
             <button onClick={() => setStockTab('summary')}
-              className={`px-4 py-3 font-semibold border-b-2 transition-all ${stockTab === 'summary' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
+              className={`px-3 py-2 sm:px-4 sm:py-3 font-semibold border-b-2 transition-all ${stockTab === 'summary' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
               📋 Summary
             </button>
             <button onClick={() => setStockTab('detail')}
-              className={`px-4 py-3 font-semibold border-b-2 transition-all ${stockTab === 'detail' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
+              className={`px-3 py-2 sm:px-4 sm:py-3 font-semibold border-b-2 transition-all ${stockTab === 'detail' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
               📝 Detail History
             </button>
           </div>

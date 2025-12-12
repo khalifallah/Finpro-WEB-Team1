@@ -312,8 +312,8 @@ export default function StocksPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex justify-between items-center">
+      {/* Page Header - ✅ RESPONSIVE */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Stock Management</h1>
           <p className="text-gray-600 mt-1">
@@ -325,7 +325,7 @@ export default function StocksPage() {
         <button
           onClick={() => setCreateModal(true)}
           disabled={isSuperAdminWithoutStore}
-          className={`btn btn-primary gap-2 ${
+          className={`btn btn-primary gap-2 w-full sm:w-auto ${
             isSuperAdminWithoutStore ? 'btn-disabled opacity-50 cursor-not-allowed' : ''
           }`}
           title={
@@ -337,9 +337,9 @@ export default function StocksPage() {
         </button>
       </div>
 
-      {/* Store Filter (Super Admin only) */}
+      {/* Store Filter (Super Admin only) - ✅ RESPONSIVE */}
       {isSuperAdmin && (
-        <div className="p-4 rounded-lg shadow-sm border border-blue-200 bg-blue-50">
+        <div className="p-3 sm:p-4 rounded-lg shadow-sm border border-blue-200 bg-blue-50">
           {/* ===================== SHOW ERROR IF ANY ===================== */}
           {storesError && (
             <div className="alert alert-error mb-4">
@@ -428,7 +428,7 @@ export default function StocksPage() {
 
       {/* Stock List */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        <div className="px-6 py-3 bg-gray-50 border-b">
+        <div className="px-4 py-2 sm:px-6 sm:py-3 bg-gray-50 border-b">
           <p className="text-sm text-gray-600">
             {isSuperAdminWithoutStore ? (
               <span className="text-yellow-700 font-medium">

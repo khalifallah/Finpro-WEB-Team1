@@ -155,9 +155,9 @@ export default function CreateProductPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
-        {/* Header */}
+        {/* Header - ✅ RESPONSIVE */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Create New Product</h1>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Create New Product</h1>
           <p className="text-lg text-gray-600">Add a new product to the catalog</p>
         </div>
 
@@ -183,7 +183,7 @@ export default function CreateProductPage() {
 
         {/* Form Card */}
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-          <div className="p-8 space-y-8">
+          <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
             {/* Product Name Section */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-3">
@@ -348,8 +348,8 @@ export default function CreateProductPage() {
             </div>
           </div>
 
-          {/* Form Actions */}
-          <div className="px-8 py-6 border-t border-gray-200 bg-gray-50 flex gap-4 justify-end">
+          {/* Form Actions - ✅ RESPONSIVE */}
+          <div className="px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 border-t border-gray-200 bg-gray-50 flex gap-4 justify-end">
             <button
               type="button"
               onClick={() => router.back()}

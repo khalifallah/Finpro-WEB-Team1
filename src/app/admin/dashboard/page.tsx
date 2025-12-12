@@ -48,23 +48,23 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="space-y-8">
-      {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-primary to-primary/80 rounded-xl p-6 text-white">
-        <h1 className="text-3xl font-bold">
+    <div className="space-y-6 sm:space-y-8">
+      {/* Welcome Header - ✅ RESPONSIVE */}
+      <div className="bg-gradient-to-r from-primary to-primary/80 rounded-xl p-4 sm:p-6 text-white">
+        <h1 className="text-2xl sm:text-3xl font-bold">
           Welcome, {user?.fullName || 'Admin'}! 👋
         </h1>
-        <p className="mt-2 opacity-90">
+        <p className="mt-2 opacity-90 text-sm sm:text-base">
           {isSuperAdmin 
             ? 'You have super admin access.' 
             : `You are managing store operations. Some features are read-only.`}
         </p>
-        <div className="mt-4 flex items-center gap-2">
-          <span className={`badge ${isSuperAdmin ? 'badge-warning' : 'badge-info'} badge-lg`}>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className={`badge ${isSuperAdmin ? 'badge-warning' : 'badge-info'} badge-sm sm:badge-lg`}>
             {user?.role === 'SUPER_ADMIN' ? '👑 Super Admin' : '🏪 Store Admin'}
           </span>
           {user?.store && (
-            <span className="badge badge-outline badge-lg text-white border-white">
+            <span className="badge badge-outline badge-sm sm:badge-lg text-white border-white">
               📍 {user.store.name}
             </span>
           )}
@@ -89,15 +89,15 @@ export default function DashboardPage() {
       {/* Feature Overview */}
       <div>
         <h2 className="text-xl font-bold mb-4 text-black">Feature Overview</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {/* Product Management Card */}
           <div className="card bg-white shadow-md text-black">
-            <div className="card-body">
-              <h3 className="card-title">
+            <div className="card-body p-4 sm:p-6">
+              <h3 className="card-title text-base sm:text-lg">
                 📦 Product Management
-                {!isSuperAdmin && <span className="badge badge-ghost ml-2">Read Only</span>}
+                {!isSuperAdmin && <span className="badge badge-ghost ml-2 text-xs">Read Only</span>}
               </h3>
-              <ul className="list-disc list-inside text-sm text-gray-600 space-y-1 mt-2">
+              <ul className="list-disc list-inside text-xs sm:text-sm text-gray-600 space-y-1 mt-2">
                 <li>View product catalog</li>
                 <li>Search products</li>
                 {isSuperAdmin && (
@@ -108,11 +108,11 @@ export default function DashboardPage() {
                   </>
                 )}
               </ul>
-              <div className="card-actions justify-end mt-4">
-                <Link href="/admin/products" className="btn btn-primary btn-sm">
+              <div className="card-actions justify-end mt-4 gap-2">
+                <Link href="/admin/products" className="btn btn-primary btn-xs sm:btn-sm">
                   View Products
                 </Link>
-                <Link href="/admin/categories" className="btn btn-outline btn-sm text-blue-500">
+                <Link href="/admin/categories" className="btn btn-outline btn-xs sm:btn-sm text-blue-500">
                   View Categories
                 </Link>
               </div>
@@ -121,16 +121,16 @@ export default function DashboardPage() {
 
           {/* Inventory Management Card */}
           <div className="card bg-white shadow-md text-black">
-            <div className="card-body">
-              <h3 className="card-title">📈 Inventory Management</h3>
-              <ul className="list-disc list-inside text-sm text-gray-600 space-y-1 mt-2">
+            <div className="card-body p-4 sm:p-6">
+              <h3 className="card-title text-base sm:text-lg">📈 Inventory Management</h3>
+              <ul className="list-disc list-inside text-xs sm:text-sm text-gray-600 space-y-1 mt-2">
                 <li>Manage stock per store</li>
                 <li>Create stock journals (add/reduce)</li>
                 <li>View stock history</li>
                 {isSuperAdmin && <li>Manage stock across all stores</li>}
               </ul>
               <div className="card-actions justify-end mt-4">
-                <Link href="/admin/stocks" className="btn btn-primary btn-sm">
+                <Link href="/admin/stocks" className="btn btn-primary btn-xs sm:btn-sm">
                   Manage Stock
                 </Link>
               </div>
@@ -141,16 +141,16 @@ export default function DashboardPage() {
           {/* Discount Management Card - STORE_ADMIN ONLY */}
           {!isSuperAdmin && (
             <div className="card bg-white shadow-md">
-              <div className="card-body text-black">
-                <h3 className="card-title">🎁 Discount Management</h3>
-                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1 mt-2">
+              <div className="card-body p-4 sm:p-6 text-black">
+                <h3 className="card-title text-base sm:text-lg">🎁 Discount Management</h3>
+                <ul className="list-disc list-inside text-xs sm:text-sm text-gray-600 space-y-1 mt-2">
                   <li>Create product discounts</li>
                   <li>Set minimum purchase discounts</li>
                   <li>Buy One Get One (BOGO) offers</li>
                   <li>Percentage or fixed amount discounts</li>
                 </ul>
                 <div className="card-actions justify-end mt-4">
-                  <Link href="/admin/discounts" className="btn btn-primary btn-sm">
+                  <Link href="/admin/discounts" className="btn btn-primary btn-xs sm:btn-sm">
                     Manage Discounts
                   </Link>
                 </div>
@@ -161,16 +161,16 @@ export default function DashboardPage() {
 
           {/* Reports Card */}
           <div className="card bg-white shadow-md">
-            <div className="card-body">
-              <h3 className="card-title text-black">📊 Reports & Analysis</h3>
-              <ul className="list-disc list-inside text-sm text-gray-600 space-y-1 mt-2">
+            <div className="card-body p-4 sm:p-6">
+              <h3 className="card-title text-base sm:text-lg text-black">📊 Reports & Analysis</h3>
+              <ul className="list-disc list-inside text-xs sm:text-sm text-gray-600 space-y-1 mt-2">
                 <li>Monthly sales report</li>
                 <li>Sales by category/product</li>
                 <li>Stock movement history</li>
                 {isSuperAdmin && <li>Filter by store</li>}
               </ul>
               <div className="card-actions justify-end mt-4">
-                <Link href="/admin/reports" className="btn btn-primary btn-sm">
+                <Link href="/admin/reports" className="btn btn-primary btn-xs sm:btn-sm">
                   Reports
                 </Link>
               </div>
@@ -180,18 +180,18 @@ export default function DashboardPage() {
           {/* User Management Card - Super Admin Only */}
           {isSuperAdmin && (
             <div className="card bg-white shadow-md md:col-span-2">
-              <div className="card-body text-black">
-                <h3 className="card-title">
+              <div className="card-body p-4 sm:p-6 text-black">
+                <h3 className="card-title text-base sm:text-lg">
                   👥 User Management
-                  <span className="badge badge-warning ml-2">Super Admin Only</span>
+                  <span className="badge badge-warning ml-2 text-xs">Super Admin Only</span>
                 </h3>
-                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1 mt-2">
+                <ul className="list-disc list-inside text-xs sm:text-sm text-gray-600 space-y-1 mt-2">
                   <li>View all registered users</li>
                   <li>Create, update, delete store admin accounts</li>
                   <li>Assign store admins to stores</li>
                 </ul>
                 <div className="card-actions justify-end mt-4">
-                  <Link href="/admin/users" className="btn btn-primary btn-sm">
+                  <Link href="/admin/users" className="btn btn-primary btn-xs sm:btn-sm">
                     Manage Users
                   </Link>
                 </div>
@@ -203,77 +203,77 @@ export default function DashboardPage() {
 
       {/* Access Summary Table */}
       <div className="card bg-white shadow-md text-black">
-        <div className="card-body">
-          <h3 className="card-title mb-4">🔐 Your Access Permissions</h3>
+        <div className="card-body p-4 sm:p-6">
+          <h3 className="card-title mb-4 text-base sm:text-lg">🔐 Your Access Permissions</h3>
           <div className="overflow-x-auto">
-            <table className="table">
+            <table className="table text-xs sm:text-sm">
               {/* Header */}
               <thead className="bg-gray-800 text-white">
                 <tr>
-                  <th className="text-white font-semibold">Feature</th>
-                  <th className="text-white font-semibold text-center">View</th>
-                  <th className="text-white font-semibold text-center">Create</th>
-                  <th className="text-white font-semibold text-center">Update</th>
-                  <th className="text-white font-semibold text-center">Delete</th>
+                  <th className="text-white font-semibold text-xs sm:text-sm">Feature</th>
+                  <th className="text-white font-semibold text-center text-xs sm:text-sm">View</th>
+                  <th className="text-white font-semibold text-center text-xs sm:text-sm">Create</th>
+                  <th className="text-white font-semibold text-center text-xs sm:text-sm">Update</th>
+                  <th className="text-white font-semibold text-center text-xs sm:text-sm">Delete</th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="hover:bg-gray-50">
-                  <td className="font-medium">Products</td>
-                  <td className="text-center text-green-500 text-lg">✅</td>
-                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
-                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
-                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
+                  <td className="font-medium text-xs sm:text-sm">Products</td>
+                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
                 </tr>
                 <tr className="hover:bg-gray-50 bg-gray-100">
-                  <td className="font-medium">Categories</td>
-                  <td className="text-center text-green-500 text-lg">✅</td>
-                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
-                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
-                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
+                  <td className="font-medium text-xs sm:text-sm">Categories</td>
+                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
                 </tr>
                 <tr className="hover:bg-gray-50">
-                  <td className="font-medium">Stock</td>
-                  <td className="text-center text-green-500 text-lg">✅</td>
-                  <td className="text-center text-green-500 text-lg">✅</td>
-                  <td className="text-center text-green-500 text-lg">✅</td>
-                  <td className="text-center text-green-500 text-lg">✅</td>
+                  <td className="font-medium text-xs sm:text-sm">Stock</td>
+                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
+                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
+                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
+                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
                 </tr>
                 {/* ===================== Discount - SUPER_ADMIN = All ❌ ===================== */}
                 <tr className="hover:bg-gray-50 bg-gray-100">
-                  <td className="font-medium">Discounts</td>
-                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text-green-500">✅</span>}</td>
-                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text-green-500">✅</span>}</td>
-                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text-green-500">✅</span>}</td>
-                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text-green-500">✅</span>}</td>
+                  <td className="font-medium text-xs sm:text-sm">Discounts</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text-green-500">✅</span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text-green-500">✅</span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text_green-500">✅</span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text-red-500">❌</span>}</td>
                 </tr>
                 {/* ============================================================================ */}
                 <tr className="hover:bg-gray-50">
-                  <td className="font-medium">
+                  <td className="font-medium text-xs sm:text-sm">
                     Sales Report
                     {!isSuperAdmin && <span className="ml-2 text-xs text-gray-500">(Own Store)</span>}
                   </td>
-                  <td className="text-center text-green-500 text-lg">✅</td>
+                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
                   <td className="text-center text-gray-400">-</td>
                   <td className="text-center text-gray-400">-</td>
                   <td className="text-center text-gray-400">-</td>
                 </tr>
                 <tr className="hover:bg-gray-50 bg-gray-100">
-                  <td className="font-medium">
+                  <td className="font-medium text-xs sm:text-sm">
                     Stock Report
                     {!isSuperAdmin && <span className="ml-2 text-xs text-gray-500">(Own Store)</span>}
                   </td>
-                  <td className="text-center text-green-500 text-lg">✅</td>
+                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
                   <td className="text-center text-gray-400">-</td>
                   <td className="text-center text-gray-400">-</td>
                   <td className="text-center text-gray-400">-</td>
                 </tr>
                 <tr className="hover:bg-gray-50">
-                  <td className="font-medium">User Management</td>
-                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
-                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
-                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
-                  <td className="text-center text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
+                  <td className="font-medium text-xs sm:text-sm">User Management</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
                 </tr>
               </tbody>
             </table>
