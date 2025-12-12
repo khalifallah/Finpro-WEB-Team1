@@ -170,11 +170,8 @@ export default function DashboardPage() {
                 {isSuperAdmin && <li>Filter by store</li>}
               </ul>
               <div className="card-actions justify-end mt-4">
-                <Link href="/admin/reports/sales" className="btn btn-primary btn-sm">
-                  Sales Report
-                </Link>
-                <Link href="/admin/reports/stock" className="btn btn-outline btn-sm text-blue-500">
-                  Stock Report
+                <Link href="/admin/reports" className="btn btn-primary btn-sm">
+                  Reports
                 </Link>
               </div>
             </div>
