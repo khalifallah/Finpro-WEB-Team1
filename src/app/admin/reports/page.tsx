@@ -106,9 +106,10 @@ export default function ReportsPage() {
   // ===================== MEMOIZED CONSTANTS =====================
   const apiUrl = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api', []);
 
-  const authHeaders = useMemo(() => {
+  const authHeaders = useMemo<HeadersInit>(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    return headers;
   }, []);
   // ============================================================
 
@@ -258,35 +259,35 @@ export default function ReportsPage() {
   // ===================== SALES MONTHLY =====================
   useEffect(() => {
     if (reportType === 'sales' && salesTab === 'monthly') {
-      fetchReport('/reports/sales/monthly', setSalesMonthly, storeIdToUse, selectedMonth);
+      fetchReport('/reports/sales/monthly', setSalesMonthly, storeIdToUse ?? null, selectedMonth);
     }
   }, [reportType, salesTab, storeIdToUse, selectedMonth, fetchReport]);
 
   // ===================== SALES BY CATEGORY =====================
   useEffect(() => {
     if (reportType === 'sales' && salesTab === 'byCategory') {
-      fetchReport('/reports/sales/by-category', setSalesByCategory, storeIdToUse, selectedMonth);
+      fetchReport('/reports/sales/by-category', setSalesByCategory, storeIdToUse ?? null, selectedMonth);
     }
   }, [reportType, salesTab, storeIdToUse, selectedMonth, fetchReport]);
 
   // ===================== SALES BY PRODUCT =====================
   useEffect(() => {
     if (reportType === 'sales' && salesTab === 'byProduct') {
-      fetchReport('/reports/sales/by-product', setSalesByProduct, storeIdToUse, selectedMonth);
+      fetchReport('/reports/sales/by-product', setSalesByProduct, storeIdToUse ?? null, selectedMonth);
     }
   }, [reportType, salesTab, storeIdToUse, selectedMonth, fetchReport]);
 
   // ===================== STOCK SUMMARY =====================
   useEffect(() => {
     if (reportType === 'stock' && stockTab === 'summary') {
-      fetchReport('/reports/stock/summary', setStockSummary, storeIdToUse, selectedMonth);
+      fetchReport('/reports/stock/summary', setStockSummary, storeIdToUse ?? null, selectedMonth);
     }
   }, [reportType, stockTab, storeIdToUse, selectedMonth, fetchReport]);
 
   // ===================== STOCK DETAIL =====================
   useEffect(() => {
     if (reportType === 'stock' && stockTab === 'detail') {
-      fetchReport('/reports/stock/detail', setStockDetail, storeIdToUse, selectedMonth);
+      fetchReport('/reports/stock/detail', setStockDetail, storeIdToUse ?? null, selectedMonth);
     }
   }, [reportType, stockTab, storeIdToUse, selectedMonth, fetchReport]);
 
