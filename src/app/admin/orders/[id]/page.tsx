@@ -6,6 +6,7 @@ import Link from "next/link";
 import { axiosInstance } from "@/libs/axios/axios.config";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
+import { formatInvoiceId } from "@/utils/format";
 
 // --- Format Helpers ---
 const formatPrice = (price: number) =>
@@ -143,7 +144,7 @@ export default function AdminOrderDetailPage() {
             </ul>
           </div>
           <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-            Order #{order.id}
+            Order {formatInvoiceId(order.id, order.createdAt)}
             <span
               className={`text-sm px-3 py-1 rounded-full border ${getStatusBadgeClass(
                 order.status
