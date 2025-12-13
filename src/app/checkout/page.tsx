@@ -48,75 +48,155 @@ export default function CheckoutPage() {
   const fetchCheckoutPreview = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get("/orders/checkout/preview");
-      setCheckoutPreview(response.data.data.preview);
+      setError("");
 
-      // Set selected address if available
-      if (response.data.data.preview.selectedAddress) {
-        setSelectedAddress(response.data.data.preview.selectedAddress);
+      // Get token from localStorage
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      // *** FIX: Pass storeId to checkout preview ***
+      const response = await axiosInstance.get("/orders/checkout/preview", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          storeId: storeId, // Pass storeId from URL
+        },
+      });
+
+      if (response.data.status === 200 || response.data.status === "success") {
+        const previewData = response.data.data.preview;
+
+        // Check if canCheckout is false
+        if (!previewData.canCheckout) {
+          setError(
+            "Cannot proceed to checkout. Your cart may be empty or there are issues with your order."
+          );
+          // Don't set checkoutPreview if can't checkout
+          return;
+        }
+
+        setCheckoutPreview(previewData);
+
+        // Set selected address if available
+        if (previewData.selectedAddress) {
+          setSelectedAddress(previewData.selectedAddress);
+        }
+
+        // *** FIX: Auto-select shipping method if available ***
+        if (previewData.shippingOptions?.length > 0) {
+          setSelectedShipping(previewData.shippingOptions[0]);
+
+          // Trigger validation if address exists
+          if (previewData.selectedAddress) {
+            handleAddressSelect(previewData.selectedAddress);
+          }
+        }
+      } else {
+        throw new Error(
+          response.data.message || "Failed to load checkout preview"
+        );
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to load checkout");
+      console.error("Fetch checkout preview error:", err);
+
+      // Handle specific errors
+      if (err.response?.status === 401) {
+        setError("Your session has expired. Please log in again.");
+        // Redirect to login after 2 seconds
+        setTimeout(() => router.push("/login"), 2000);
+      } else if (err.response?.status === 400) {
+        setError(
+          err.response?.data?.message ||
+            "Cannot checkout. Please check your cart items."
+        );
+      } else {
+        setError(err.message || "Failed to load checkout");
+      }
+
+      // Reset cart state on error
+      setCheckoutPreview({
+        canCheckout: false,
+        addresses: [],
+        cartSummary: [],
+        subtotal: 0,
+        totalWeight: 0,
+        shippingOptions: [],
+        requiresAddress: true,
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 2;
+
+  const fetchCheckoutPreviewWithRetry = async () => {
+    try {
+      await fetchCheckoutPreview();
+      setRetryCount(0); // Reset retry count on success
+    } catch (error) {
+      if (retryCount < maxRetries) {
+        setRetryCount((prev) => prev + 1);
+        setTimeout(() => {
+          fetchCheckoutPreviewWithRetry();
+        }, 1000 * retryCount); // Exponential backoff
+      }
+    }
+  };
+
+  // Update useEffect to use the retry version
+  useEffect(() => {
+    if (user) {
+      fetchCheckoutPreviewWithRetry();
+    }
+  }, [user]);
+
   const handleAddressSelect = async (address: UserAddress) => {
     setSelectedAddress(address);
     setShowAddressList(false);
 
-    // Calculate shipping for selected address
     try {
+      // First, get available shipping methods
+      const shippingResponse = await axiosInstance.post(
+        "/orders/shipping/calculate",
+        {
+          addressId: address.id,
+          weight: checkoutPreview?.totalWeight || 1000,
+          storeId: storeId,
+        }
+      );
+
+      const shippingOptions = shippingResponse.data.data.shippingOptions;
+
+      if (shippingOptions.length === 0) {
+        setError(
+          "No shipping methods available for this address. Please select a different address."
+        );
+        return;
+      }
+
+      // Auto-select the first available shipping method
+      const firstShippingMethod = shippingOptions[0];
+      setSelectedShipping(firstShippingMethod);
+
+      // Then validate checkout with the actual shipping method
       const response = await axiosInstance.post("/orders/checkout/validate", {
         addressId: address.id,
-        shippingMethod: selectedShipping?.serviceCode || "REG",
+        shippingMethod: firstShippingMethod.serviceCode, // Use actual service code
+        storeId: storeId,
       });
 
-      setValidationResult(response.data.data);
-
-      // Auto-select first shipping method if none selected
-      if (
-        !selectedShipping &&
-        response.data.data.availableShippingMethods?.length > 0
-      ) {
-        setSelectedShipping(response.data.data.availableShippingMethods[0]);
-      }
+      const validationData = response.data.data;
+      setValidationResult(validationData);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to calculate shipping");
+      console.error("Shipping validation error:", err);
+      setError(err.message || "Failed to calculate shipping");
     }
   };
-
-  const handleShippingSelect = (shipping: ShippingService) => {
-    setSelectedShipping(shipping);
-  };
-
-  const calculateShipping = async () => {
-    if (!selectedAddress) {
-      setError("Please select a shipping address first");
-      return;
-    }
-
-    try {
-      const response = await axiosInstance.post("/orders/shipping/calculate", {
-        addressId: selectedAddress.id,
-        weight: checkoutPreview?.totalWeight || 1000,
-      });
-
-      setValidationResult({
-        isValid: validationResult?.isValid ?? true,
-        userAddress: validationResult?.userAddress || selectedAddress,
-        nearestStore: validationResult?.nearestStore,
-        distance: validationResult?.distance ?? 0,
-        subtotal: validationResult?.subtotal ?? 0,
-        shippingCost: response.data.data.shippingOptions[0]?.cost || 0,
-        availableShippingMethods: response.data.data.shippingOptions,
-      });
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to calculate shipping");
-    }
-  };
-
   const handlePlaceOrder = async () => {
     if (!selectedAddress || !selectedShipping) {
       setError("Please select address and shipping method");
@@ -132,9 +212,22 @@ export default function CheckoutPage() {
     setError("");
 
     try {
+      // Check what shipping methods are available for this store
+      const availableMethods = validationResult?.availableShippingMethods || [];
+      const expressMethod = availableMethods.find(
+        (method) =>
+          method.serviceCode === "EXPRESS" ||
+          method.serviceCode === "NEXT_DAY" ||
+          method.serviceCode === "FAST_DELIVERY"
+      );
+
+      // If no express method, use the first available
+      const selectedMethod = expressMethod || availableMethods[0];
+
+      // Use the found method
       const response = await axiosInstance.post("/orders/create", {
         userAddressId: selectedAddress.id,
-        shippingMethod: selectedShipping.serviceCode,
+        shippingMethod: selectedMethod.serviceCode, // Use actual code from store
         storeId: storeId,
         cartItemIds: cartItemIds,
       });
@@ -182,22 +275,82 @@ export default function CheckoutPage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth="2"
-                  d="M12 9v2m0 4h.01m-6.938 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
                 />
               </svg>
-              <span>Your cart is empty</span>
+              <div>
+                <span>Cannot proceed to checkout</span>
+                <p className="text-sm mt-1">
+                  Your cart may be empty or there are issues with your order.
+                </p>
+              </div>
             </div>
-            <button
-              className="btn btn-primary mt-4"
-              onClick={() => router.push("/")}
-            >
-              Continue Shopping
-            </button>
+            <div className="flex gap-4 justify-center mt-6">
+              <button
+                className="btn btn-primary"
+                onClick={() => router.push("/cart")}
+              >
+                View Cart
+              </button>
+              <button
+                className="btn btn-outline"
+                onClick={() => {
+                  // Force refresh cart
+                  localStorage.removeItem("storeId");
+                  router.push("/");
+                }}
+              >
+                Start Over
+              </button>
+            </div>
           </div>
         </div>
       </AuthGuard>
     );
   }
+
+  async function handleShippingSelect(
+    shipping: ShippingService
+  ): Promise<void> {
+    try {
+      setSelectedShipping(shipping);
+      setError("");
+
+      if (!selectedAddress) {
+        setError("Please select a shipping address first.");
+        return;
+      }
+
+      const response = await axiosInstance.post("/orders/checkout/validate", {
+        addressId: selectedAddress.id,
+        shippingMethod: shipping.serviceCode,
+        storeId: storeId,
+      });
+
+      const validationData: CheckoutValidation = response.data.data;
+      setValidationResult(validationData);
+    } catch (err: any) {
+      console.error("Shipping selection validation error:", err);
+      setError(
+        err.response?.data?.message || "Failed to validate shipping method"
+      );
+    }
+  }
+
+  const calculateShipping = async (): Promise<void> => {
+    try {
+      setError("");
+      if (!selectedAddress) {
+        setError("Please select a shipping address first.");
+        setShowAddressList(true);
+        return;
+      }
+      await handleAddressSelect(selectedAddress);
+    } catch (err: any) {
+      console.error("Calculate shipping error:", err);
+      setError(err.response?.data?.message || "Failed to calculate shipping");
+    }
+  };
 
   return (
     <AuthGuard requireAuth requireVerification={true}>

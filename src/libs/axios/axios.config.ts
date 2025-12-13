@@ -50,21 +50,17 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Safely log error details
-    console.error("API Error Details:", {
-      hasError: !!error,
-      errorType: error?.constructor?.name,
-      errorMessage: error?.message,
-      hasConfig: !!error?.config,
-      configUrl: error?.config?.url,
-      configMethod: error?.config?.method,
-      hasResponse: !!error?.response,
-      responseStatus: error?.response?.status,
-      responseData: error?.response?.data,
-      code: error?.code,
-      isNetworkError: error?.isAxiosError && !error?.response,
-      isTimeout: error?.code === "ECONNABORTED",
-    });
+    // Don't log empty errors
+    if (error && (error.message || error.response)) {
+      console.error("API Error Details:", {
+        hasError: !!error,
+        errorType: error?.constructor?.name,
+        errorMessage: error?.message,
+        configUrl: error?.config?.url,
+        responseStatus: error?.response?.status,
+        responseData: error?.response?.data,
+      });
+    }
 
     // Handle specific errors
     if (error?.code === "ECONNABORTED") {
@@ -74,35 +70,27 @@ axiosInstance.interceptors.response.use(
     }
 
     if (!error?.response) {
-      // Check if it's a CORS or network error
-      if (error?.message?.includes("Network Error") || error?.isAxiosError) {
+      if (error?.message?.includes("Network Error")) {
         return Promise.reject(
-          new Error(
-            "Network error. Please check if backend server is running and CORS is configured properly."
-          )
+          new Error("Network error. Please check your connection.")
         );
       }
-
-      return Promise.reject(
-        new Error(
-          error?.message || "Network error. Please check your connection."
-        )
-      );
+      return Promise.reject(error);
     }
 
-    // For 401 errors (unauthorized), clear token and redirect to login
-    if (error.response?.status === 401) {
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        window.location.href = "/login";
-      }
+    // Don't redirect on 401 for checkout/cart endpoints to prevent loops
+    const url = error.config?.url || "";
+    const isAuthEndpoint = url.includes("/auth/");
+
+    if (error.response?.status === 401 && !isAuthEndpoint) {
+      console.warn("Unauthorized access, but not redirecting to prevent loops");
+      // Return a specific error that can be handled by components
+      return Promise.reject(new Error("session_expired"));
     }
 
-    // Extract error message from response
+    // Extract error message
     const errorMessage =
       error.response?.data?.message ||
-      error.response?.data?.error?.message ||
       error.response?.data?.error ||
       error.message ||
       "An error occurred";

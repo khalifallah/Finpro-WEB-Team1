@@ -34,21 +34,41 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
 
-      // LOGIC PENTING: Ambil Store ID yang sedang aktif
-      // Sesuaikan key "storeId" ini dengan apa yang kamu simpan di localStorage saat user pilih toko
-      // Jika belum ada fitur pilih toko, backend akan default ke 1.
+      // Get token and check if valid
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.warn("No token found, skipping cart refresh");
+        return;
+      }
+
       const storedStoreId = localStorage.getItem("storeId");
       const storeId = storedStoreId ? Number(storedStoreId) : undefined;
 
       const cartData = await cartService.getCart(storeId);
+
+      // Ensure cart items exist
+      if (
+        cartData &&
+        (!cartData.cartItems || cartData.cartItems.length === 0)
+      ) {
+        // Keep existing cart if new one is empty
+        if (cart?.cartItems && cart.cartItems.length > 0) {
+          console.log("Received empty cart but keeping existing cart data");
+          return;
+        }
+      }
+
       setCart(cartData);
     } catch (error) {
       console.error("Failed to fetch cart:", error);
+      // Don't reset cart on error, keep existing data
+      if (!cart) {
+        setCart(null);
+      }
     } finally {
       setIsLoading(false);
     }
   };
-
   // Ambil data cart saat user login atau refresh halaman
   useEffect(() => {
     if (user) {
