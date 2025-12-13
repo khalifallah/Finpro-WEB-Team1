@@ -153,13 +153,32 @@ export default function CartPage() {
         return;
       }
 
-      const storeId = localStorage.getItem("storeId");
-      if (!storeId) {
-        setError("Store information is missing");
+      // Validate cart items before proceeding
+      const validItems = cart.cartItems.filter(
+        (item) =>
+          item &&
+          item.product &&
+          item.quantity > 0 &&
+          item.stockAvailable >= item.quantity
+      );
+
+      if (validItems.length === 0) {
+        setError("No valid items to checkout. Some items may be out of stock.");
         return;
       }
 
-      const allItemIds = cart.cartItems.map((item) => item.id);
+      const storeId = localStorage.getItem("storeId");
+      if (!storeId) {
+        setError("Store information is missing. Please refresh the page.");
+        return;
+      }
+
+      const allItemIds = validItems.map((item) => item.id);
+
+      if (allItemIds.length === 0) {
+        setError("No items selected for checkout");
+        return;
+      }
 
       const itemsParam = JSON.stringify(allItemIds);
 
