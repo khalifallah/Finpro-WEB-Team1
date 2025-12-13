@@ -1,5 +1,4 @@
-const BASE_API_URL =
-  process.env.NEXT_PUBLIC_BASE_API_URL || "http://localhost:8000/api";
+const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
 // Add these for debugging
 const IS_DEVELOPMENT = process.env.NODE_ENV === "development";

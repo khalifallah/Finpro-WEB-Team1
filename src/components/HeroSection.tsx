@@ -92,9 +92,10 @@ const HeroSection: React.FC<HeroSectionProps> = ({ carousel }) => {
             </p>
             <Link
               href="/products"
-              className="btn btn-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
+              className="inline-flex items-center gap-2 btn btn-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
             >
-              Start Shopping
+              <ShoppingBag className="w-5 h-5" />
+              Shop Now
             </Link>
           </div>
         </div>

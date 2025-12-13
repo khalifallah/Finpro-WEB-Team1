@@ -122,10 +122,10 @@ export default function Home() {
     longitude?: number,
     storeIdOverride?: number
   ) => {
-    try {
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
+    try {
       console.log("Fetching homepage data...");
 
       const params: any = {};
@@ -139,79 +139,100 @@ export default function Home() {
 
       console.log("Request params:", params);
 
-      const response = await axiosInstance.get("/homepage", {
-        params,
-        timeout: 15000,
-      });
+      // Add retry mechanism
+      let retries = 3;
+      let lastError: any;
 
-      console.log("Full API Response:", response);
-      console.log("Response data:", response.data);
-      console.log("Response data.data:", response.data?.data);
+      while (retries > 0) {
+        try {
+          const response = await axiosInstance.get("/homepage", {
+            params,
+            timeout: 60000, // Increased timeout
+          });
 
-      if (response.data.status === 200 || response.data.status === "success") {
-        let homepageData = response.data.data;
+          console.log("Full API Response:", response);
 
-        // Transform the products to match frontend expectations
-        if (homepageData?.productList?.products) {
-          homepageData.productList.products =
-            homepageData.productList.products.map((product: any) => {
-              // Handle different image structures
-              let images = [];
+          if (
+            response.data.status === 200 ||
+            response.data.status === "success"
+          ) {
+            let homepageData = response.data.data;
 
-              if (product.images) {
-                // If images is array of strings
-                if (
-                  Array.isArray(product.images) &&
-                  product.images.length > 0
-                ) {
-                  if (typeof product.images[0] === "string") {
-                    images = product.images.map(
-                      (url: string, index: number) => ({
-                        id: index,
-                        imageUrl: url,
-                      })
-                    );
-                  } else if (product.images[0].imageUrl) {
-                    // If already in correct format
-                    images = product.images;
+            // Transform the products to match frontend expectations
+            if (homepageData?.productList?.products) {
+              homepageData.productList.products =
+                homepageData.productList.products.map((product: any) => {
+                  // Handle different image structures
+                  let images: any[] = [];
+
+                  if (product.images) {
+                    // If images is array of strings
+                    if (
+                      Array.isArray(product.images) &&
+                      product.images.length > 0
+                    ) {
+                      if (typeof product.images[0] === "string") {
+                        images = product.images.map(
+                          (url: string, index: number) => ({
+                            id: index,
+                            imageUrl: url,
+                          })
+                        );
+                      } else if (product.images[0].imageUrl) {
+                        // If already in correct format
+                        images = product.images;
+                      }
+                    }
                   }
-                }
-              }
 
-              return {
-                ...product,
-                images: images,
-                // Also handle price field
-                price: product.price || product.defaultPrice || 0,
-              };
-            });
+                  return {
+                    ...product,
+                    images: images,
+                    // Also handle price field
+                    price: product.price || product.defaultPrice || 0,
+                  };
+                });
+            }
+
+            setHomepageData(homepageData);
+            return; // success, exit the function
+          } else {
+            throw new Error(
+              response.data.message || "Failed to load homepage data"
+            );
+          }
+        } catch (err: any) {
+          lastError = err;
+          retries--;
+
+          if (retries > 0) {
+            console.log(`Retrying... ${retries} attempts left`);
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+          }
         }
-
-        setHomepageData(homepageData);
-      } else {
-        throw new Error(
-          response.data.message || "Failed to load homepage data"
-        );
       }
+
+      // If we get here, all retries failed
+      throw lastError || new Error("All retry attempts failed");
     } catch (err: any) {
       console.error("Error fetching homepage data:", err);
 
       // Extract meaningful error message
       let errorMessage = "Failed to load homepage data";
 
-      if (err.message.includes("timeout")) {
+      if (err?.message?.includes("timeout")) {
         errorMessage =
           "Request timeout. Backend server might be slow or unavailable.";
       } else if (
-        err.message.includes("Network Error") ||
-        err.message.includes("ECONNREFUSED")
+        err?.message?.includes("Network Error") ||
+        err?.message?.includes("ECONNREFUSED")
       ) {
         errorMessage =
           "Cannot connect to backend server. Please make sure the backend is running on http://localhost:8000";
-      } else if (err.message.includes("CORS")) {
+      } else if (err?.message?.includes("CORS")) {
         errorMessage = "CORS error. Please check backend CORS configuration.";
       } else {
-        errorMessage = err.message || "Failed to load homepage data";
+        errorMessage = err?.message || "Failed to load homepage data";
       }
 
       setError(errorMessage);
@@ -240,7 +261,8 @@ export default function Home() {
               title: "Welcome to Beyond Market",
               subtitle: "Your one-stop grocery shop",
               ctaText: "Shop Now",
-              ctaLink: "/products",
+              link: "/products", // Make sure this exists
+              type: "banner", // Add type field
             },
           ],
         },
