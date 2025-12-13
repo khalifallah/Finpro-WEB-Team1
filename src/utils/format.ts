@@ -37,3 +37,21 @@ export const getStatusBadgeColor = (status: string) => {
       return "badge-neutral";
   }
 };
+
+export const formatInvoiceId = (id: number, dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+
+    // Ambil Tanggal (DD)
+    const day = date.getDate().toString().padStart(2, "0");
+
+    // Ambil Bulan (MM) - Ingat getMonth() mulai dari 0
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+
+    // Gabungkan: #INV- + Tanggal + Bulan + OrderID
+    return `#INV-${day}${month}${id}`;
+  } catch (error) {
+    // Fallback jika tanggal error/kosong
+    return `#INV-${id}`;
+  }
+};

@@ -10,7 +10,12 @@ import Link from "next/link";
 // Import logic yang sudah dipisah
 import { useOrderActions } from "@/hooks/useOrderActions";
 import { OrderModals } from "@/components/orders/OrderModals";
-import { formatPrice, formatDate, getStatusBadgeColor } from "@/utils/format";
+import {
+  formatPrice,
+  formatDate,
+  getStatusBadgeColor,
+  formatInvoiceId,
+} from "@/utils/format";
 
 export default function OrderDetailPage() {
   const { id: orderId } = useParams();
@@ -75,7 +80,9 @@ export default function OrderDetailPage() {
               <div className="card-body p-6">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h2 className="font-bold text-lg">Order Status</h2>
+                    <h2 className="font-bold text-2xl font-mono text-primary mb-1">
+                      Order {formatInvoiceId(order.id, order.createdAt)}
+                    </h2>
                     <p className="text-gray-500 text-sm mt-1">
                       {formatDate(order.createdAt)}
                     </p>

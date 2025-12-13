@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { axiosInstance } from "@/libs/axios/axios.config";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatInvoiceId } from "@/utils/format";
 
 // --- Helper Functions Manual (Biar warna pas sama admin panel) ---
 const formatPrice = (price: number) => {
@@ -230,7 +231,7 @@ export default function AdminOrdersPage() {
                 orders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 font-mono font-bold text-primary">
-                      #{order.id}
+                      {formatInvoiceId(order.id, order.createdAt)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {formatDate(order.createdAt)}

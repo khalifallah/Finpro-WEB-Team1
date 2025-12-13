@@ -6,7 +6,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import AuthGuard from "@/components/AuthGuard";
 import { axiosInstance } from "@/libs/axios/axios.config";
 import Link from "next/link";
-import { formatPrice, formatDate, getStatusBadgeColor } from "@/utils/format";
+import {
+  formatPrice,
+  formatDate,
+  getStatusBadgeColor,
+  formatInvoiceId,
+} from "@/utils/format";
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -154,7 +159,7 @@ export default function OrdersPage() {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-base-200 pb-3 mb-3">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-lg">
-                        Order #{order.id}
+                        Order {formatInvoiceId(order.id, order.createdAt)}
                       </span>
                       <span className="text-xs text-gray-400">•</span>
                       <span className="text-sm text-gray-500">
