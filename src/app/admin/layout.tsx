@@ -266,18 +266,42 @@ export default function AdminLayout({
       >
         {/* Logo */}
         <div className="p-4 border-b border-gray-800">
-          <Link
-            href="/admin/dashboard"
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-          >
-            <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-xl flex items-center justify-center font-bold text-lg shadow-lg">
-              BM
-            </div>
-            <div>
-              <h1 className="font-bold text-lg">Beyond Market</h1>
-              <p className="text-xs text-gray-400">Admin Panel</p>
-            </div>
-          </Link>
+          <div className="dropdown dropdown-start">
+            <label
+              tabIndex={0}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+                <img
+                  src="/Beyond_Market_compressed.png"
+                  alt="Beyond Market"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div>
+                <h1 className="font-bold text-lg">Beyond Market</h1>
+                <p className="text-xs text-gray-400">Admin Panel</p>
+              </div>
+            </label>
+            <ul
+              tabIndex={0}
+              className="dropdown-content menu p-2 shadow bg-white rounded-box w-44"
+            >
+              <li>
+                <Link href="/" className="block px-2 py-1 hover:bg-gray-100">
+                  Back to Store
+                </Link>
+              </li>
+              <li>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-2 py-1 hover:bg-gray-100 text-red-600"
+                >
+                  Logout
+                </button>
+              </li>
+            </ul>
+          </div>
         </div>
 
         {/* Navigation */}
@@ -341,7 +365,7 @@ export default function AdminLayout({
               href="/"
               className="btn btn-sm btn-ghost flex-1 text-gray-400 hover:text-white"
             >
-              Store
+              Home
             </Link>
             <button
               onClick={handleLogout}
