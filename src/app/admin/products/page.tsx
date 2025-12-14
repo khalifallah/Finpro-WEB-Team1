@@ -8,6 +8,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import AdminProductList from '@/components/admin/AdminProductList';
 import { ProductResponse } from '@/types/product.types';
 import { productService } from '@/services/productService';
+import { toast } from 'sonner';
 
 interface PaginationData {
   page: number;
@@ -101,10 +102,22 @@ export default function ProductPage() {
     try {
       setLoading(true);
       await productService.deleteProduct(productId);
+      toast.success('Product deleted successfully');
       await fetchProducts(pagination.page, searchQuery);
       setDeleteConfirm({ isOpen: false });
     } catch (error: any) {
-      setError(error.message || 'Failed to delete product');
+      const msg = error?.message || 'Failed to delete product';
+      const isForbidden = error?.status === 403 || error?.response?.status === 403 || /forbid|forbidden|super admin/i.test(msg);
+      const forbiddenMsg = 'Forbidden Action Restricted to super-admin users only';
+      setError(isForbidden ? forbiddenMsg : msg);
+      // show toast as well
+      try {
+        // import toast lazily to avoid adding top-level dependency in this file
+        const { toast } = await import('sonner');
+        toast.error(isForbidden ? forbiddenMsg : msg);
+      } catch (e) {
+        // ignore if toast can't be imported at runtime
+      }
       setTimeout(() => setDeleteConfirm({ isOpen: false }), 2000);
     } finally {
       setLoading(false);

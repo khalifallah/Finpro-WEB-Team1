@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProductResponse } from '@/types/product.types';
 import { productService } from '@/services/productService';
+import { toast } from 'sonner';
 
-interface FormData {
+interface CreateProductForm {
   name: string;
   description: string;
   price: number;
@@ -27,7 +28,7 @@ export default function CreateProductPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [imagePreview, setImagePreview] = useState<string[]>([]);
 
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<CreateProductForm>({
     name: '',
     description: '',
     price: 0,
@@ -99,6 +100,31 @@ export default function CreateProductPage() {
     });
   };
 
+  const handleCreate = async (payload: CreateProductForm) => {
+    try {
+      setLoading(true);
+      // convert payload to actual FormData (DOM) before sending
+      const fd = new FormData();
+      fd.append('name', payload.name);
+      fd.append('description', payload.description);
+      fd.append('price', String(payload.price));
+      fd.append('categoryId', String(payload.categoryId));
+      payload.productImages.forEach((file) => fd.append('images', file));
+
+      await productService.createProduct(fd);
+      toast.success('Product created successfully');
+      router.push('/admin/products');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to create product';
+      const isForbidden = err?.status === 403 || err?.response?.status === 403 || /forbid|forbidden|super admin/i.test(msg);
+      const forbiddenMsg = 'Forbidden Action Restricted to super-admin users only';
+      setError(isForbidden ? forbiddenMsg : msg);
+      toast.error(isForbidden ? forbiddenMsg : msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -136,10 +162,15 @@ export default function CreateProductPage() {
       });
 
       await productService.createProduct(formDataToSend);
+      toast.success('Product created successfully');
       router.push('/admin/products');
     } catch (err: any) {
-      setError(err.message || 'Failed to create product');
+      const msg = err?.response?.data?.message || err?.message || 'Failed to create product';
+      const isForbidden = err?.status === 403 || err?.response?.status === 403 || /forbid|forbidden|super admin/i.test(msg);
+      const forbiddenMsg = 'Forbidden Action Restricted to super-admin users only';
+      setError(isForbidden ? forbiddenMsg : msg);
       console.error('Error creating product:', err);
+      toast.error(isForbidden ? forbiddenMsg : msg);
     } finally {
       setSubmitLoading(false);
     }

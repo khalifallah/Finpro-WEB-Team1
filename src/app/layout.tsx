@@ -6,6 +6,7 @@ import { ToastProvider } from "@/contexts/ToastContext";
 import GoogleOAuthProviderWrapper from "@/providers/GoogleOAuthProvider";
 import { CartProvider } from "@/contexts/CartContext";
 import NavbarWrapper from "@/components/common/NavbarWrapper";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,6 +39,7 @@ export default function RootLayout({
             <CartProvider>
               <GoogleOAuthProviderWrapper>
                 {children}
+                <Toaster richColors position="top-right" />
               </GoogleOAuthProviderWrapper>
             </CartProvider>
           </AuthProvider>
