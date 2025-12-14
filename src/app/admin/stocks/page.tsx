@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import Pagination from '@/components/common/Pagination';
 import StockList from '@/components/admin/StockList';
 import StockUpdateModal from '@/components/admin/StockUpdateModal';
@@ -223,31 +224,40 @@ export default function StocksPage() {
     storeId: number,
     quantity: number
   ): Promise<void> => {
+    try {
+      if (!productId || !storeId || !quantity) {
+        throw new Error('All fields are required');
+      }
 
-    if (!productId || !storeId || !quantity) {
-      throw new Error('All fields are required');
+      if (quantity <= 0) {
+        throw new Error('Quantity must be greater than 0');
+      }
+
+      const response = await fetch(`${getApiUrl()}/stocks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ productId, storeId, quantity }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const err = new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+        (err as any).status = response.status;
+        throw err;
+      }
+
+      setCreateModal(false); // Close modal on success
+      await fetchStocks(1);
+      toast.success('Stock created successfully');
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to create stock';
+      const isForbidden = err?.status === 403 || /forbid|forbidden|super admin/i.test(msg);
+      toast.error(isForbidden ? 'Forbidden Action Restricted to super-admin users only' : msg);
+      throw err;
     }
-
-    if (quantity <= 0) {
-      throw new Error('Quantity must be greater than 0');
-    }
-
-    const response = await fetch(`${getApiUrl()}/stocks`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders(),
-      },
-      body: JSON.stringify({ productId, storeId, quantity }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
-    }
-
-    setCreateModal(false); // Close modal on success
-    await fetchStocks(1);
   };
 
   // Update stock
@@ -256,22 +266,31 @@ export default function StocksPage() {
     quantityChange: number,
     reason: string
   ): Promise<void> => {
+    try {
+      const response = await fetch(`${getApiUrl()}/stocks/${stockId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ quantityChange, reason }),
+      });
 
-    const response = await fetch(`${getApiUrl()}/stocks/${stockId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders(),
-      },
-      body: JSON.stringify({ quantityChange, reason }),
-    });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const err = new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+        (err as any).status = response.status;
+        throw err;
+      }
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+      await fetchStocks(pagination.page);
+      toast.success('Stock updated successfully');
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to update stock';
+      const isForbidden = err?.status === 403 || /forbid|forbidden|super admin/i.test(msg);
+      toast.error(isForbidden ? 'Forbidden Action Restricted to super-admin users only' : msg);
+      throw err;
     }
-
-    await fetchStocks(pagination.page);
   };
 
   // ===================== HANDLER UNTUK TOMBOL UPDATE & HISTORY =====================

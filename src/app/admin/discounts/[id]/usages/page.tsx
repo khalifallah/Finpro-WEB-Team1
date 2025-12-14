@@ -134,12 +134,6 @@ export default function DiscountUsagesPage() {
   // Table columns
   const columns = [
     {
-      key: 'id',
-      header: 'Usage ID',
-      render: (value: number) => <span className="font-mono text-sm font-bold text-gray-900">#{value}</span>,
-      className: 'w-24',
-    },
-    {
       key: 'orderId',
       header: 'Order ID',
       render: (value: number) => (
@@ -226,10 +220,7 @@ export default function DiscountUsagesPage() {
                 )}
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500">Discount ID</p>
-              <p className="text-2xl font-bold text-gray-900">#{discountInfo.id}</p>
-            </div>
+            {/* Discount ID hidden from UI; id still available on data for internal use */}
           </div>
         </div>
       )}
@@ -300,13 +291,12 @@ export default function DiscountUsagesPage() {
 
       {/* Export Button - ✅ RESPONSIVE */}
       <div className="flex justify-end">
-        <button 
+            <button 
           onClick={() => {
             // Simple CSV export
             const csvContent = [
-              ['Usage ID', 'Order ID', 'Email', 'Discount Amount', 'Order Total', 'Used At'],
+              ['Order ID', 'Email', 'Discount Amount', 'Order Total', 'Used At'],
               ...usages.map(u => [
-                u.id,
                 u.orderId,
                 u.order?.user?.email || '-',
                 u.amount,
