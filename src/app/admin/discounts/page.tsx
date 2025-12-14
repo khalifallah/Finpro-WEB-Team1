@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import DataTable from '@/components/common/DataTable';
+import SearchBar from '@/components/common/SearchBar';
 import { FiBarChart2, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import Pagination from '@/components/common/Pagination';
@@ -94,7 +95,22 @@ export default function DiscountsPage() {
       const params = new URLSearchParams({ page: String(page), limit: String(pagination.limit) });
       const storeIdToUse = isSuperAdmin ? selectedStore : userStoreId;
       if (storeIdToUse) params.append('storeId', String(storeIdToUse));
-      if (query) params.append('search', query.trim());
+      if (query) {
+        // Backend doesn't support free-text 'search' for discounts; resolve text -> productId
+        try {
+          const pRes = await fetch(`${getApiUrl()}/products?limit=5&search=${encodeURIComponent(query.trim())}`, { headers: getAuthHeaders() });
+          if (pRes.ok) {
+            const pData = await pRes.json();
+            const productsList = pData.products || pData.data?.products || pData || [];
+            const first = Array.isArray(productsList) && productsList.length > 0 ? productsList[0] : null;
+            if (first && first.id) {
+              params.append('productId', String(first.id));
+            }
+          }
+        } catch (err) {
+          console.warn('Product lookup for discount search failed', err);
+        }
+      }
 
       const res = await fetch(`${getApiUrl()}/discounts?${params}`, { headers: getAuthHeaders() });
       const data = await res.json();
@@ -282,7 +298,9 @@ export default function DiscountsPage() {
         </button>
       </div>
 
-      {/* Search removed */}
+      <div className="mt-4 max-w-xl">
+        <SearchBar value={query} onChange={setQuery} placeholder="Search discounts..." />
+      </div>
 
       {/* Store Filter (Super Admin) - ✅ RESPONSIVE */}
       {isSuperAdmin && (
