@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import SearchBar from '@/components/common/SearchBar';
 import Pagination from '@/components/common/Pagination';
@@ -35,6 +36,10 @@ export default function ProductPage() {
   }>({ isOpen: false });
 
   const [error, setError] = useState<string | null>(null);
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   const fetchProducts = async (page: number = 1, search: string = '') => {
     try {
@@ -90,11 +95,27 @@ export default function ProductPage() {
   };
 
   useEffect(() => {
-    fetchProducts();
+    // Read initial page and search from URL so refresh stays on same page
+    const pageParam = searchParams?.get('page');
+    const searchParam = searchParams?.get('search') || '';
+    const pageNumber = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
+    setSearchQuery(searchParam);
+    setPagination((prev) => ({ ...prev, page: pageNumber }));
+    fetchProducts(pageNumber, searchParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+    // update url to include search and reset to page 1
+    try {
+      const params = new URLSearchParams();
+      if (query) params.set('search', query);
+      params.set('page', '1');
+      router.push(`${pathname}?${params.toString()}`);
+    } catch (e) {
+      // ignore router errors
+    }
     fetchProducts(1, query);
   };
 
@@ -125,6 +146,15 @@ export default function ProductPage() {
   };
 
   const handlePageChange = (page: number) => {
+    // update url so refresh preserves page
+    try {
+      const params = new URLSearchParams();
+      if (searchQuery) params.set('search', searchQuery);
+      params.set('page', String(page));
+      router.push(`${pathname}?${params.toString()}`);
+    } catch (e) {
+      // ignore router errors
+    }
     fetchProducts(page, searchQuery);
   };
 
