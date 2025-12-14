@@ -14,7 +14,8 @@ type DiscountType = 'BOGO' | 'DIRECT_PERCENTAGE' | 'DIRECT_NOMINAL';
 
 const validationSchema = Yup.object().shape({
   productId: Yup.number()
-    .typeError('Please select a valid product'),
+    .typeError('Please select a valid product')
+    .required('Please select a product'),
   description: Yup.string()
     .required('Description is required')
     .min(5, 'Description must be at least 5 characters'),
@@ -88,20 +89,22 @@ export default function DiscountForm({
       >
         {({ errors, touched, isSubmitting, values }) => (
           <Form className="space-y-6">
-            {/* Product (optional) */}
+            {/* Product */}
             <FormField
-              label="Product (Optional)"
+              label="Product"
               name="productId"
               error={errors.productId}
               touched={touched.productId}
-              hint="Leave empty to apply discount to all products"
+              required
             >
               <Field
                 as="select"
                 name="productId"
                 className="select select-bordered w-full"
               >
-                <option value="">All Products</option>
+                <option value="" disabled>
+                  Select product
+                </option>
                 {products.map((product) => (
                   <option key={product.id} value={product.id}>
                     {product.name}
@@ -207,7 +210,8 @@ export default function DiscountForm({
                 name="maxDiscountAmount"
                 error={errors.maxDiscountAmount}
                 touched={touched.maxDiscountAmount}
-                hint="Maximum discount that can be applied (optional)"
+                required
+                hint="Maximum discount that can be applied"
               >
                 <Field
                   as="input"
