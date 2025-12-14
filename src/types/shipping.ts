@@ -19,6 +19,7 @@ export interface CheckoutPreview {
   shippingOptions: ShippingService[];
   distance?: number;
   nearestStore?: any;
+  discountAmount?: number;
   requiresAddress: boolean;
 }
 
