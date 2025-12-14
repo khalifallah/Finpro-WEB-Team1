@@ -149,6 +149,16 @@ export default function DiscountFormModal({
       setError('Store is required');
       return;
     }
+    // Max Discount required only when not BOGO
+    if (formData.type !== 'BOGO' && (formData.maxDiscountAmount === undefined || formData.maxDiscountAmount === null)) {
+      setError('Max discount ceiling is required for discounts');
+      return;
+    }
+    // Product must be selected (no "All Products" option)
+    if (formData.productId === undefined) {
+      setError('Product is required');
+      return;
+    }
     if (!formData.startDate || !formData.endDate) {
       setError('Start and end dates are required');
       return;
@@ -283,14 +293,15 @@ export default function DiscountFormModal({
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
-                  Max Discount <span className="text-gray-400 font-normal">(Optional)</span>
+                  Max Discount <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
                   value={formData.maxDiscountAmount || ''}
                   onChange={(e) => updateField('maxDiscountAmount', parseInt(e.target.value) || undefined)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., 50000"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 cursor-not-allowed"
+                  placeholder={formData.type === 'BOGO' ? 'N/A for BOGO' : 'e.g., 50000'}
+                  disabled={formData.type === 'BOGO'}
                 />
               </div>
             </div>
@@ -332,18 +343,20 @@ export default function DiscountFormModal({
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
-                  Product <span className="text-gray-400 font-normal">(Optional)</span>
-                </label>
-                <select
-                  value={formData.productId || ''}
-                  onChange={(e) => updateField('productId', parseInt(e.target.value) || undefined)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">All Products</option>
-                  {productsList.map((product) => (
-                    <option key={product.id} value={product.id}>{product.name}</option>
-                  ))}
-                </select>
+                    Product <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.productId || ''}
+                    onChange={(e) => updateField('productId', parseInt(e.target.value) || undefined)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="" disabled>
+                      Select product
+                    </option>
+                    {productsList.map((product) => (
+                      <option key={product.id} value={product.id}>{product.name}</option>
+                    ))}
+                  </select>
               </div>
             </div>
 
