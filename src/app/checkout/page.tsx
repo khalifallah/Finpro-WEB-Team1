@@ -32,6 +32,7 @@ export default function CheckoutPage() {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [validationResult, setValidationResult] =
     useState<CheckoutValidation | null>(null);
+  
 
   const storeIdParam = searchParams.get("storeId");
   const itemsParam = searchParams.get("items");
@@ -79,6 +80,9 @@ export default function CheckoutPage() {
         }
 
         setCheckoutPreview(previewData);
+
+        // Backend should provide numeric discount fields (`discountAmount` on items and `discountAmount` on preview).
+        // No client-side fetch to admin endpoints is performed here.
 
         // Set selected address if available
         if (previewData.selectedAddress) {
@@ -247,6 +251,34 @@ export default function CheckoutPage() {
       minimumFractionDigits: 0,
     }).format(price);
   };
+
+  // Fallback: if backend didn't provide discountAmount, compute from cartSummary
+  const previewDiscount = (() => {
+    if (!checkoutPreview) return 0;
+    if (typeof checkoutPreview.discountAmount === "number") return checkoutPreview.discountAmount || 0;
+    // compute from cartSummary items
+    try {
+      return checkoutPreview.cartSummary.reduce((acc: number, item: any) => {
+        // prefer server-provided numeric discount per item if present
+        if (typeof item.discountAmount === "number") return acc + (item.discountAmount || 0);
+        if (!item.discount) return acc;
+        const rule = item.discount;
+        let itemDiscount = 0;
+        if (rule.type === "DIRECT_PERCENTAGE") {
+          itemDiscount = (item.total || 0) * (rule.value / 100 || 0);
+        } else if (rule.type === "DIRECT_NOMINAL") {
+          itemDiscount = Math.min(rule.value || 0, item.total || 0);
+        } else if (rule.type === "BOGO") {
+          if ((item.quantity || 0) >= 2) itemDiscount = item.price || 0;
+        }
+        return acc + itemDiscount;
+      }, 0);
+    } catch (e) {
+      return 0;
+    }
+  })();
+
+  const effectivePreviewDiscount = previewDiscount;
 
   if (loading) {
     return (
@@ -587,6 +619,13 @@ export default function CheckoutPage() {
                         <p className="text-sm text-gray-600">
                           Quantity: {item.quantity}
                         </p>
+                        {item.discount && (
+                          <div className="mt-1">
+                            <span className="inline-block px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">
+                              {item.discount.description}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="text-right">
                         <p className="font-medium">{formatPrice(item.price)}</p>
@@ -620,13 +659,20 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
+                  {effectivePreviewDiscount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Discount</span>
+                      <span>-{formatPrice(effectivePreviewDiscount)}</span>
+                    </div>
+                  )}
+
                   <div className="divider"></div>
 
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
                     <span>
                       {formatPrice(
-                        checkoutPreview.subtotal + (selectedShipping?.cost || 0)
+                        checkoutPreview.subtotal + (selectedShipping?.cost || 0) - (effectivePreviewDiscount || 0)
                       )}
                     </span>
                   </div>
