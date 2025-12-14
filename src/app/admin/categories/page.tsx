@@ -8,6 +8,7 @@ import Modal from '@/components/common/Modal';
 import CategoryList from '@/components/admin/CategoryList';
 import { useAuth } from '@/contexts/AuthContext';
 import { categoryService } from '@/services/categoryService';
+import { toast } from 'sonner';
 
 interface Category {
   id: number;
@@ -129,6 +130,12 @@ export default function CategoriesPage() {
   };
 
   const handleSubmit = async () => {
+    const forbiddenMsg = 'Forbidden Action Restricted to super-admin users only';
+    if (!isSuperAdmin) {
+      setFormError(forbiddenMsg);
+      toast.error(forbiddenMsg);
+      return;
+    }
     if (!formData.name.trim()) {
       setFormError('Category name is required');
       return;
@@ -140,8 +147,10 @@ export default function CategoriesPage() {
 
       if (formModal.mode === 'create') {
         await categoryService.createCategory({ name: formData.name });
+        toast.success('Category created successfully');
       } else if (formModal.category) {
         await categoryService.updateCategory(formModal.category.id, { name: formData.name });
+        toast.success('Category updated successfully');
       }
 
       setFormModal({ isOpen: false, mode: 'create' });
@@ -155,9 +164,17 @@ export default function CategoriesPage() {
   };
 
   const handleDelete = async (categoryId: number) => {
+    const forbiddenMsg = 'Forbidden Action Restricted to super-admin users only';
+    if (!isSuperAdmin) {
+      setError(forbiddenMsg);
+      toast.error(forbiddenMsg);
+      setDeleteConfirm({ isOpen: false });
+      return;
+    }
     try {
       setLoading(true);
       await categoryService.deleteCategory(categoryId);
+      toast.success('Category deleted successfully');
       // Refresh dengan search query yang sama
       fetchCategories(pagination.page, searchQuery);
       setDeleteConfirm({ isOpen: false });
