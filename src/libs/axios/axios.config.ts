@@ -9,8 +9,8 @@ const axiosInstance = axios.create({
     Accept: "application/json",
   },
   withCredentials: true,
-  timeout: 30000, // 30 second timeout
-  timeoutErrorMessage: "Request timeout. Please check your connection.",
+  timeout: 60000, // Increased from 30000
+  timeoutErrorMessage: "Request timeout. Backend might be starting up...",
 });
 
 // Request interceptor
@@ -43,13 +43,24 @@ axiosInstance.interceptors.request.use(
 
 // Response interceptor
 axiosInstance.interceptors.response.use(
-  (response) => {
-    if (process.env.NODE_ENV === "development") {
-      console.log(`API Response: ${response.status} ${response.config.url}`);
+  (response) => response,
+  async (error) => {
+    const config = error.config;
+    
+    // Retry on timeout or network errors
+    if (
+      (error.code === 'ECONNABORTED' || error.message.includes('timeout') || !error.response) &&
+      !config._retry
+    ) {
+      config._retry = true;
+      
+      // Wait 2 seconds before retrying
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      console.log(`Retrying request to ${config.url}`);
+      return axiosInstance(config);
     }
-    return response;
-  },
-  (error) => {
+
     // Don't log empty errors
     if (error && (error.message || error.response)) {
       console.error("API Error Details:", {

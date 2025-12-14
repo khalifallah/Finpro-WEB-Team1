@@ -3,41 +3,44 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { useAuth } from "@/contexts/AuthContext";
 import { GoogleLogin } from "@react-oauth/google";
+import { loginSchema } from "@/validations/auth.validation";
 import { FaEye, FaEyeSlash, FaEnvelope, FaLock } from "react-icons/fa";
 
+type LoginFormData = {
+  email: string;
+  password: string;
+};
+
 export default function LoginPage() {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { login, googleLogin } = useAuth();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: yupResolver(loginSchema),
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
-    setError("");
 
     try {
-      await login(formData.email, formData.password);
+      await login(data.email, data.password);
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || "Login failed";
-      setError(errorMessage);
-      
+
       if (errorMessage.includes("verify your email")) {
-        setError(`${errorMessage}. Please check your email or request a new verification link.`);
+        console.log(
+          `${errorMessage}. Please check your email or request a new verification link.`
+        );
       }
     } finally {
       setIsLoading(false);
@@ -48,12 +51,12 @@ export default function LoginPage() {
     try {
       await googleLogin(credentialResponse.credential);
     } catch (err: any) {
-      setError("Google login failed. Please try again or use email login.");
+      console.log("Google login failed. Please try again or use email login.");
     }
   };
 
   const handleGoogleError = () => {
-    setError("Google login failed. Please try again or use email login.");
+    console.log("Google login failed. Please try again or use email login.");
   };
 
   const handleForgotPassword = () => {
@@ -69,23 +72,18 @@ export default function LoginPage() {
       <div className="card w-full max-w-md bg-base-100 shadow-2xl">
         <div className="card-body p-6 md:p-8">
           <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-primary mb-2">Welcome Back</h1>
-            <p className="text-base-content/70">Sign in to your account to continue</p>
+            <h1 className="text-3xl font-bold text-primary mb-2">
+              Welcome Back
+            </h1>
+            <p className="text-base-content/70">
+              Sign in to your account to continue
+            </p>
           </div>
-          
-          {error && (
-            <div className="alert alert-error animate-fadeIn">
-              <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-sm">{error}</span>
-            </div>
-          )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {/* Email Input */}
             <div className="form-control">
-              <label className="label">
+              <label className="label" htmlFor="email">
                 <span className="label-text font-semibold">Email Address</span>
               </label>
               <div className="relative">
@@ -93,21 +91,28 @@ export default function LoginPage() {
                   <FaEnvelope className="text-base-content/50" />
                 </div>
                 <input
+                  id="email"
                   type="email"
-                  name="email"
-                  className="input input-bordered w-full pl-10"
-                  value={formData.email}
-                  onChange={handleChange}
+                  className={`input input-bordered w-full pl-10 ${
+                    errors.email ? "input-error" : ""
+                  }`}
                   placeholder="you@example.com"
-                  required
+                  {...register("email")}
                 />
               </div>
+              {errors.email && (
+                <label className="label">
+                  <span className="label-text-alt text-error">
+                    {errors.email.message}
+                  </span>
+                </label>
+              )}
             </div>
 
             {/* Password Input with Toggle */}
             <div className="form-control">
               <div className="flex justify-between items-center mb-2">
-                <label className="label p-0">
+                <label className="label p-0" htmlFor="password">
                   <span className="label-text font-semibold">Password</span>
                 </label>
                 <button
@@ -123,13 +128,13 @@ export default function LoginPage() {
                   <FaLock className="text-base-content/50" />
                 </div>
                 <input
+                  id="password"
                   type={showPassword ? "text" : "password"}
-                  name="password"
-                  className="input input-bordered w-full pl-10 pr-12"
-                  value={formData.password}
-                  onChange={handleChange}
+                  className={`input input-bordered w-full pl-10 pr-12 ${
+                    errors.password ? "input-error" : ""
+                  }`}
                   placeholder="Enter your password"
-                  required
+                  {...register("password")}
                 />
                 <button
                   type="button"
@@ -144,6 +149,13 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
+              {errors.password && (
+                <label className="label">
+                  <span className="label-text-alt text-error">
+                    {errors.password.message}
+                  </span>
+                </label>
+              )}
             </div>
 
             {/* Remember Me Checkbox */}
@@ -156,9 +168,9 @@ export default function LoginPage() {
 
             {/* Submit Button */}
             <div className="form-control mt-6">
-              <button 
-                type="submit" 
-                className="btn btn-primary btn-block" 
+              <button
+                type="submit"
+                className="btn btn-primary btn-block"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -196,7 +208,10 @@ export default function LoginPage() {
           <div className="text-center mt-6">
             <p className="text-base-content/70">
               Don't have an account?{" "}
-              <Link href="/register" className="link link-primary font-semibold">
+              <Link
+                href="/register"
+                className="link link-primary font-semibold"
+              >
                 Sign up now
               </Link>
             </p>
@@ -206,9 +221,13 @@ export default function LoginPage() {
           <div className="mt-4 text-center text-xs text-base-content/50">
             <p>
               By continuing, you agree to our{" "}
-              <Link href="/terms" className="link link-hover">Terms of Service</Link>{" "}
+              <Link href="/terms" className="link link-hover">
+                Terms of Service
+              </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="link link-hover">Privacy Policy</Link>
+              <Link href="/privacy" className="link link-hover">
+                Privacy Policy
+              </Link>
             </p>
           </div>
         </div>
