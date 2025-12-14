@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import DataTable from '@/components/common/DataTable';
+import { FiBarChart2, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import Pagination from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -240,17 +241,19 @@ export default function DiscountsPage() {
         <div className="flex gap-2 justify-end">
           {/* See Usage Button */}
           <button onClick={() => handleViewUsage(item.id)}
-            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-sm"
-            title="View Usage Report">
-            📈 Usage
+            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-sm flex items-center justify-center"
+            title="View Usage Report" aria-label="View Usage Report">
+            <FiBarChart2 className="h-4 w-4" />
           </button>
           <button onClick={() => handleEdit(item)}
-            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm">
-            ✏️ Edit
+            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm flex items-center justify-center"
+            title="Edit Discount" aria-label="Edit Discount">
+            <FiEdit2 className="h-4 w-4" />
           </button>
           <button onClick={() => setDeleteConfirm({ isOpen: true, discountId: item.id, discountName: item.description })}
-            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-sm">
-            🗑️
+            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-sm flex items-center justify-center"
+            title="Delete Discount" aria-label="Delete Discount">
+            <FiTrash2 className="h-4 w-4" />
           </button>
         </div>
       ),
