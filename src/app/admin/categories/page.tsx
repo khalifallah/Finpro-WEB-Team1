@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import SearchBar from '@/components/common/SearchBar';
 import Pagination from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -38,6 +39,10 @@ export default function CategoriesPage() {
     total: 0,
     totalPages: 0,
   });
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   const [deleteConfirm, setDeleteConfirm] = useState<{
     isOpen: boolean;
@@ -106,14 +111,28 @@ export default function CategoriesPage() {
     }
   };
 
-  // Initial fetch
+  // Initial fetch: read page/search from URL so refresh preserves state
   useEffect(() => {
-    fetchCategories();
+    const pageParam = searchParams?.get('page');
+    const searchParam = searchParams?.get('search') || '';
+    const pageNumber = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
+    setSearchQuery(searchParam);
+    setPagination((prev) => ({ ...prev, page: pageNumber }));
+    fetchCategories(pageNumber, searchParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // SEARCH HANDLER 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+    try {
+      const params = new URLSearchParams();
+      if (query) params.set('search', query);
+      params.set('page', '1');
+      router.push(`${pathname}?${params.toString()}`);
+    } catch (e) {
+      // ignore router errors
+    }
     fetchCategories(1, query);
   };
 
@@ -186,6 +205,14 @@ export default function CategoriesPage() {
   };
 
   const handlePageChange = (page: number) => {
+    try {
+      const params = new URLSearchParams();
+      if (searchQuery) params.set('search', searchQuery);
+      params.set('page', String(page));
+      router.push(`${pathname}?${params.toString()}`);
+    } catch (e) {
+      // ignore router errors
+    }
     fetchCategories(page, searchQuery);
   };
 

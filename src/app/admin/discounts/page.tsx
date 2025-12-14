@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import DataTable from '@/components/common/DataTable';
 import SearchBar from '@/components/common/SearchBar';
 import { FiBarChart2, FiEdit2, FiTrash2, FiPercent, FiDollarSign, FiGift } from 'react-icons/fi';
@@ -33,6 +33,9 @@ interface Product { id: number; name: string; }
 export default function DiscountsPage() {
   const { user } = useAuth();
   const router = useRouter();  // ✅ ADD THIS
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const userStoreId = user?.store?.id;
   const userStoreName = user?.store?.name;
@@ -140,7 +143,60 @@ export default function DiscountsPage() {
   }, [pagination.limit, isSuperAdmin, selectedStore, userStoreId, getAuthHeaders, query]);
 
   useEffect(() => { fetchStores(); fetchProducts(); }, [fetchStores, fetchProducts]);
-  useEffect(() => { if (isSuperAdmin || userStoreId) fetchDiscounts(1); }, [selectedStore, userStoreId, isSuperAdmin, fetchDiscounts, query]);
+
+  // Read initial page & search from URL so refresh preserves the current page
+  useEffect(() => {
+    if (!searchParams) return;
+    const pageParam = searchParams.get('page');
+    const searchParam = searchParams.get('search') || '';
+    const pageNumber = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
+    setQuery(searchParam);
+    setPagination((prev) => ({ ...prev, page: pageNumber }));
+    if (isSuperAdmin || userStoreId) fetchDiscounts(pageNumber);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Handlers: update URL and fetch explicitly to avoid race between effects
+  const handleSearch = (q: string) => {
+    setQuery(q);
+    try {
+      const params = new URLSearchParams();
+      if (q) params.set('search', q);
+      if (selectedStore) params.set('storeId', String(selectedStore));
+      params.set('page', '1');
+      router.push(`${pathname}?${params.toString()}`);
+    } catch (e) {
+      // ignore
+    }
+    fetchDiscounts(1);
+  };
+
+  const handleStoreChange = (value: number | null) => {
+    setSelectedStore(value);
+    try {
+      const params = new URLSearchParams();
+      if (query) params.set('search', query);
+      if (value) params.set('storeId', String(value));
+      params.set('page', '1');
+      router.push(`${pathname}?${params.toString()}`);
+    } catch (e) {
+      // ignore
+    }
+    fetchDiscounts(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    try {
+      const params = new URLSearchParams();
+      if (query) params.set('search', query);
+      if (selectedStore) params.set('storeId', String(selectedStore));
+      params.set('page', String(page));
+      router.push(`${pathname}?${params.toString()}`);
+    } catch (e) {
+      // ignore
+    }
+    fetchDiscounts(page);
+  };
 
   const handleCreate = () => {
     if (!isSuperAdmin && !userStoreId) { alert('Store not assigned.'); return; }
@@ -376,7 +432,7 @@ export default function DiscountsPage() {
         />
         {pagination.totalPages > 1 && (
           <div className="p-4 border-t bg-gray-50">
-            <Pagination currentPage={pagination.page} totalPages={pagination.totalPages} onPageChange={fetchDiscounts} />
+            <Pagination currentPage={pagination.page} totalPages={pagination.totalPages} onPageChange={handlePageChange} />
           </div>
         )}
       </div>

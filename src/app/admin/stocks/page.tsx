@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 import Pagination from '@/components/common/Pagination';
 import SearchBar from '@/components/common/SearchBar';
@@ -54,6 +55,11 @@ export default function StocksPage() {
     total: 0,
     totalPages: 0,
   });
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const initialLoadRef = useRef(true);
 
   // Modals
   const [updateModal, setUpdateModal] = useState<{
@@ -337,9 +343,53 @@ export default function StocksPage() {
     fetchProducts();
   }, []);
 
+  // Read initial page from URL so refresh preserves current page
   useEffect(() => {
-    fetchStocks(1);
+    const pageParam = searchParams?.get('page');
+    const pageNumber = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
+    setPagination((prev) => ({ ...prev, page: pageNumber }));
+    fetchStocks(pageNumber);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // when filters/search change, reset to page 1 and fetch
+    // Skip on initial mount so we don't override URL-provided page
+    if (initialLoadRef.current) {
+      initialLoadRef.current = false;
+      return;
+    }
+
+    const resetTo = 1;
+    try {
+      const params = new URLSearchParams();
+      if (query) params.set('search', query);
+      if (selectedStore) params.set('storeId', String(selectedStore));
+      params.set('page', String(resetTo));
+      // Only reset URL and fetch when there is no existing `page` param.
+      // This avoids overriding a user-loaded `?page=2` on refresh.
+      if (!searchParams?.get('page')) {
+        router.replace(`${pathname}?${params.toString()}`);
+        fetchStocks(resetTo);
+      }
+    } catch (e) {
+      // ignore router errors
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStore, userStoreId, query]);
+
+  const handlePageChange = (page: number) => {
+    try {
+      const params = new URLSearchParams();
+      if (query) params.set('search', query);
+      if (selectedStore) params.set('storeId', String(selectedStore));
+      params.set('page', String(page));
+      router.push(`${pathname}?${params.toString()}`);
+    } catch (e) {
+      // ignore router errors
+    }
+    fetchStocks(page);
+  };
 
   // Get effective store ID for create modal
   const effectiveStoreId = isSuperAdmin ? undefined : userStoreId;
@@ -498,7 +548,7 @@ export default function StocksPage() {
                 <Pagination
                   currentPage={pagination.page}
                   totalPages={pagination.totalPages}
-                  onPageChange={(page) => fetchStocks(page)}
+                  onPageChange={handlePageChange}
                 />
               </div>
             )}
