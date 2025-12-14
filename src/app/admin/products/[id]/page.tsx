@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { useParams, useRouter } from 'next/navigation';
 import ProductEditForm from '@/components/admin/ProductEditForm';
 import ProductImageManager from '@/components/admin/ProductImageManager';
@@ -186,7 +187,9 @@ export default function EditProductPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || 'Failed to delete image');
+        const err = new Error(errorData.error || errorData.message || 'Failed to delete image');
+        (err as any).status = response.status;
+        throw err;
       }
 
       // Update local state - remove deleted image
@@ -199,10 +202,14 @@ export default function EditProductPage() {
       });
 
       setSuccess('Image deleted successfully');
+      toast.success('Image deleted successfully');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.message || 'Failed to delete image');
-      // Don't return anything - just throw error for caller to handle
+      const msg = err?.message || 'Failed to delete image';
+      const isForbidden = err?.status === 403 || /forbid|forbidden|super admin/i.test(msg);
+      const forbiddenMsg = 'Forbidden Action Restricted to super-admin users only';
+      setError(isForbidden ? forbiddenMsg : msg);
+      toast.error(isForbidden ? forbiddenMsg : msg);
       throw err;
     }
   };
@@ -247,7 +254,9 @@ export default function EditProductPage() {
 
       if (!updateResponse.ok) {
         const errorData = await updateResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || 'Failed to update product');
+        const err = new Error(errorData.error || errorData.message || 'Failed to update product');
+        (err as any).status = updateResponse.status;
+        throw err;
       }
 
       // 2. Upload new images if any
@@ -267,7 +276,9 @@ export default function EditProductPage() {
 
         if (!imageResponse.ok) {
           const errorData = await imageResponse.json().catch(() => ({}));
-          throw new Error(errorData.error || errorData.message || 'Failed to upload images');
+          const err = new Error(errorData.error || errorData.message || 'Failed to upload images');
+          (err as any).status = imageResponse.status;
+          throw err;
         }
 
         // Clear new images after successful upload
@@ -279,7 +290,7 @@ export default function EditProductPage() {
       }
 
       setSuccess('Product updated successfully!');
-      
+      toast.success('Product updated successfully!');
       // Refresh product data
       await fetchProduct();
 
@@ -287,7 +298,11 @@ export default function EditProductPage() {
         router.push('/admin/products');
       }, 1500);
     } catch (err: any) {
-      setError(err.message || 'Failed to update product');
+      const msg = err?.message || 'Failed to update product';
+      const isForbidden = err?.status === 403 || /forbid|forbidden|super admin/i.test(msg);
+      const forbiddenMsg = 'Forbidden Action Restricted to super-admin users only';
+      setError(isForbidden ? forbiddenMsg : msg);
+      toast.error(isForbidden ? forbiddenMsg : msg);
     } finally {
       setSaving(false);
     }

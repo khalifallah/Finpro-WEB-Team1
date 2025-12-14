@@ -106,7 +106,7 @@ export default function ConfirmDialog({
         <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
           <button
             onClick={onClose}
-            className="btn btn-ghost btn-sm min-w-24"
+            className="btn btn-sm min-w-24 bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
             disabled={loading}
           >
             {cancelText}

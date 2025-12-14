@@ -18,24 +18,14 @@ export default function AdminProductList({
 }: AdminProductListProps) {
   const columns: DataTableColumn<ProductResponse>[] = [
     {
-      key: 'id',
-      header: 'ID',
-      render: (value) => (
-        <span className="font-mono text-sm font-semibold text-gray-700">
-          #{value}
-        </span>
-      ),
-      className: 'w-12',
-    },
-    {
       key: 'name',
       header: 'Product Name',
       render: (value, item) => (
         <div className="flex items-center gap-3">
-          {item.productImages?.[0]?.imageUrl && (
+          {((item.images?.[0]?.imageUrl) || (item as any).productImages?.[0]?.imageUrl) && (
             <div className="h-12 w-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-200">
               <img
-                src={item.productImages[0].imageUrl}
+                src={item.images?.[0]?.imageUrl ?? (item as any).productImages[0].imageUrl}
                 alt={value}
                 className="w-full h-full object-cover"
               />

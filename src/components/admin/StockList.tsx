@@ -47,7 +47,6 @@ export default function StockList({
       <table className="table">
         <thead className="bg-gray-50 border-b">
           <tr>
-            <th className="text-gray-700">ID</th>
             <th className="text-gray-700">Product</th>
             <th className="text-gray-700">Store</th>
             <th className="text-gray-700">Quantity</th>
@@ -57,7 +56,6 @@ export default function StockList({
         <tbody>
           {stocks.map((stock) => (
             <tr key={stock.id} className="hover:bg-gray-50 border-b">
-              <td className="text-gray-500 font-mono">#{stock.id}</td>
               <td className="text-gray-900 font-medium">{stock.product.name}</td>
               <td className="text-gray-700">{stock.store.name}</td>
               <td>

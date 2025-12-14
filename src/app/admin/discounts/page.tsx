@@ -3,6 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import DataTable from '@/components/common/DataTable';
+import SearchBar from '@/components/common/SearchBar';
+import { FiBarChart2, FiEdit2, FiTrash2, FiPercent, FiDollarSign, FiGift } from 'react-icons/fi';
+import { toast } from 'sonner';
 import Pagination from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import DiscountFormModal, { DiscountFormData } from '@/components/admin/DiscountFormModal';
@@ -38,6 +41,7 @@ export default function DiscountsPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState('');
   const [selectedStore, setSelectedStore] = useState<number | null>(null);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; discountId?: number; discountName?: string }>({ isOpen: false });
@@ -91,20 +95,52 @@ export default function DiscountsPage() {
       const params = new URLSearchParams({ page: String(page), limit: String(pagination.limit) });
       const storeIdToUse = isSuperAdmin ? selectedStore : userStoreId;
       if (storeIdToUse) params.append('storeId', String(storeIdToUse));
+      let usedProductFilter = false;
+      if (query) {
+        // Try resolving text -> productId (backend filters discounts by productId)
+        try {
+          const pRes = await fetch(`${getApiUrl()}/products?limit=5&search=${encodeURIComponent(query.trim())}`, { headers: getAuthHeaders() });
+          if (pRes.ok) {
+            const pData = await pRes.json();
+            const productsList = pData.products || pData.data?.products || pData || [];
+            const first = Array.isArray(productsList) && productsList.length > 0 ? productsList[0] : null;
+            if (first && first.id) {
+              params.append('productId', String(first.id));
+              usedProductFilter = true;
+            }
+          }
+        } catch (err) {
+          console.warn('Product lookup for discount search failed', err);
+        }
+      }
 
       const res = await fetch(`${getApiUrl()}/discounts?${params}`, { headers: getAuthHeaders() });
       const data = await res.json();
       const discountsData = data.rules || data.data?.rules || data.discounts || [];
       const totalCount = data.total || data.data?.total || 0;
 
-      setDiscounts(Array.isArray(discountsData) ? discountsData : []);
-      setPagination({ page, limit: pagination.limit, total: totalCount, totalPages: Math.ceil(totalCount / pagination.limit) });
+      const discountsList = Array.isArray(discountsData) ? discountsData : [];
+
+      // If user searched but we didn't map to a productId, perform client-side filter by discount description or product name
+      let finalList = discountsList;
+      let finalTotal = totalCount;
+      if (query && !usedProductFilter) {
+        const q = query.trim().toLowerCase();
+        finalList = discountsList.filter(d =>
+          (d.description && d.description.toLowerCase().includes(q)) ||
+          (d.product && d.product.name && d.product.name.toLowerCase().includes(q))
+        );
+        finalTotal = finalList.length;
+      }
+
+      setDiscounts(finalList);
+      setPagination({ page, limit: pagination.limit, total: finalTotal, totalPages: Math.ceil(finalTotal / pagination.limit) });
     } catch (e) { console.error('Failed:', e); setDiscounts([]); }
     finally { setLoading(false); }
-  }, [pagination.limit, isSuperAdmin, selectedStore, userStoreId, getAuthHeaders]);
+  }, [pagination.limit, isSuperAdmin, selectedStore, userStoreId, getAuthHeaders, query]);
 
   useEffect(() => { fetchStores(); fetchProducts(); }, [fetchStores, fetchProducts]);
-  useEffect(() => { if (isSuperAdmin || userStoreId) fetchDiscounts(1); }, [selectedStore, userStoreId, isSuperAdmin, fetchDiscounts]);
+  useEffect(() => { if (isSuperAdmin || userStoreId) fetchDiscounts(1); }, [selectedStore, userStoreId, isSuperAdmin, fetchDiscounts, query]);
 
   const handleCreate = () => {
     if (!isSuperAdmin && !userStoreId) { alert('Store not assigned.'); return; }
@@ -119,23 +155,31 @@ export default function DiscountsPage() {
   };
 
   const handleSubmit = async (data: DiscountFormData): Promise<void> => {
-    const url = formModal.mode === 'create' ? `${getApiUrl()}/discounts` : `${getApiUrl()}/discounts/${formModal.discount?.id}`;
-    const payload = {
-      description: data.description, type: data.type,
-      value: data.type === 'BOGO' ? undefined : data.value,
-      minPurchase: data.minPurchase || undefined, maxDiscountAmount: data.maxDiscountAmount || undefined,
-      productId: data.productId || undefined, storeId: data.storeId,
-      startDate: new Date(data.startDate), endDate: new Date(data.endDate),
-    };
+    try {
+      const url = formModal.mode === 'create' ? `${getApiUrl()}/discounts` : `${getApiUrl()}/discounts/${formModal.discount?.id}`;
+      const payload = {
+        description: data.description, type: data.type,
+        value: data.type === 'BOGO' ? undefined : data.value,
+        minPurchase: data.minPurchase || undefined, maxDiscountAmount: data.maxDiscountAmount || undefined,
+        productId: data.productId || undefined, storeId: data.storeId,
+        startDate: new Date(data.startDate), endDate: new Date(data.endDate),
+      };
 
-    const res = await fetch(url, {
-      method: formModal.mode === 'create' ? 'POST' : 'PUT',
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'Failed'); }
-    setFormModal({ isOpen: false, mode: 'create', discount: null });
-    fetchDiscounts(pagination.page);
+      const res = await fetch(url, {
+        method: formModal.mode === 'create' ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) { const err = await res.json(); const e = new Error(err.message || 'Failed'); (e as any).status = res.status; throw e; }
+      setFormModal({ isOpen: false, mode: 'create', discount: null });
+      fetchDiscounts(pagination.page);
+      toast.success(formModal.mode === 'create' ? 'Discount created successfully' : 'Discount updated successfully');
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to save discount';
+      const isForbidden = err?.status === 403 || /forbid|forbidden|super admin/i.test(msg);
+      toast.error(isForbidden ? 'Forbidden Action Restricted to super-admin users only' : msg);
+      throw err;
+    }
   };
 
   const handleDelete = async (): Promise<void> => {
@@ -143,19 +187,42 @@ export default function DiscountsPage() {
     try {
       setLoading(true);
       const res = await fetch(`${getApiUrl()}/discounts/${deleteConfirm.discountId}?confirm=yes`, { method: 'DELETE', headers: getAuthHeaders() });
-      if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'Failed'); }
+      if (!res.ok) { const err = await res.json(); const e = new Error(err.message || 'Failed'); (e as any).status = res.status; throw e; }
       setDeleteConfirm({ isOpen: false });
       fetchDiscounts(pagination.page);
-    } catch (e) { alert(e instanceof Error ? e.message : 'Failed'); }
-    finally { setLoading(false); }
+      toast.success('Discount deleted successfully');
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to delete discount';
+      const isForbidden = err?.status === 403 || /forbid|forbidden|super admin/i.test(msg);
+      toast.error(isForbidden ? 'Forbidden Action Restricted to super-admin users only' : msg);
+    } finally { setLoading(false); }
   };
 
   const getDiscountTypeLabel = (type: string) => {
     switch (type) {
-      case 'DIRECT_PERCENTAGE': return '📊 Percentage';
-      case 'DIRECT_NOMINAL': return '💵 Fixed Amount';
-      case 'BOGO': return '🎁 Buy 1 Get 1';
-      default: return type;
+      case 'DIRECT_PERCENTAGE':
+        return (
+          <>
+            <FiPercent className="h-4 w-4" />
+            <span> Percentage</span>
+          </>
+        );
+      case 'DIRECT_NOMINAL':
+        return (
+          <>
+            <FiDollarSign className="h-4 w-4" />
+            <span> Fixed Amount</span>
+          </>
+        );
+      case 'BOGO':
+        return (
+          <>
+            <FiGift className="h-4 w-4" />
+            <span> Buy 1 Get 1</span>
+          </>
+        );
+      default:
+        return type;
     }
   };
 
@@ -169,12 +236,6 @@ export default function DiscountsPage() {
 
   // Refactor: Columns dengan "See Usage" button
   const columns = [
-    {
-      key: 'id',
-      header: 'ID',
-      render: (value: number) => <span className="font-mono text-sm font-bold text-gray-900">#{value}</span>,
-      className: 'w-16',
-    },
     {
       key: 'description',
       header: 'Discount Name',
@@ -227,23 +288,25 @@ export default function DiscountsPage() {
       },
     },
     {
-      key: 'id',
+      key: 'actions',
       header: 'Actions',
-      render: (value: number, item: Discount) => (
+      render: (_value: any, item: Discount) => (
         <div className="flex gap-2 justify-end">
           {/* See Usage Button */}
-          <button onClick={() => handleViewUsage(value)}
-            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-sm"
-            title="View Usage Report">
-            📈 Usage
+          <button onClick={() => handleViewUsage(item.id)}
+            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-sm flex items-center justify-center"
+            title="View Usage Report" aria-label="View Usage Report">
+            <FiBarChart2 className="h-4 w-4" />
           </button>
           <button onClick={() => handleEdit(item)}
-            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm">
-            ✏️ Edit
+            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm flex items-center justify-center"
+            title="Edit Discount" aria-label="Edit Discount">
+            <FiEdit2 className="h-4 w-4" />
           </button>
-          <button onClick={() => setDeleteConfirm({ isOpen: true, discountId: value, discountName: item.description })}
-            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-sm">
-            🗑️
+          <button onClick={() => setDeleteConfirm({ isOpen: true, discountId: item.id, discountName: item.description })}
+            className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-sm flex items-center justify-center"
+            title="Delete Discount" aria-label="Delete Discount">
+            <FiTrash2 className="h-4 w-4" />
           </button>
         </div>
       ),
@@ -261,13 +324,17 @@ export default function DiscountsPage() {
             {isSuperAdmin ? 'Manage discounts across all stores' : `Managing: ${userStoreName}`}
           </p>
         </div>
-        <button onClick={handleCreate} disabled={!isSuperAdmin && !userStoreId}
+          <button onClick={handleCreate} disabled={!isSuperAdmin && !userStoreId}
           className="px-4 py-2 sm:px-5 sm:py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2 disabled:opacity-50 w-full sm:w-auto">
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
           </svg>
           New Discount
         </button>
+      </div>
+
+      <div className="mt-4 max-w-xl">
+        <SearchBar value={query} onChange={setQuery} placeholder="Search discounts..." />
       </div>
 
       {/* Store Filter (Super Admin) - ✅ RESPONSIVE */}

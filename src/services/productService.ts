@@ -98,13 +98,17 @@ export const productService = {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to create product');
+        const err = new Error(errorData.message || 'Failed to create product');
+        // attach status so callers can detect forbidden (403)
+        (err as any).status = response.status;
+        throw err;
       }
 
       return response.json();
     } catch (error: any) {
-      console.error('Create product error:', error);
-      throw new Error(error.message || 'Failed to create product');
+      console.warn('Create product warning:', error);
+      // Rethrow the original error so callers can inspect attached properties like `status`
+      throw error;
     }
   },
 
@@ -170,7 +174,9 @@ export const productService = {
         } catch {
           errorMessage = `Error: ${response.status} ${response.statusText}`;
         }
-        throw new Error(errorMessage);
+        const err = new Error(errorMessage);
+        (err as any).status = response.status;
+        throw err;
       }
 
       const text = await response.text();
@@ -179,8 +185,8 @@ export const productService = {
       }
       return { success: true };
     } catch (error: any) {
-      console.error('Delete product error:', error);
-      throw new Error(error.message || 'Failed to delete product');
+      console.warn('Delete product warning:', error);
+      throw error;
     }
   },
 };

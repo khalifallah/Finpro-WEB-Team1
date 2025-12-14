@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import Pagination from '@/components/common/Pagination';
+import SearchBar from '@/components/common/SearchBar';
 import StockList from '@/components/admin/StockList';
 import StockUpdateModal from '@/components/admin/StockUpdateModal';
 import StockJournalModal from '@/components/admin/StockJournalModal';
@@ -44,6 +46,7 @@ export default function StocksPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState('');
   const [selectedStore, setSelectedStore] = useState<number | null>(null);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -164,6 +167,23 @@ export default function StocksPage() {
       if (storeIdToUse) {
         params.append('storeId', String(storeIdToUse));
       }
+      if (query) {
+        // Backend stocks endpoint filters by productId, not text — resolve text -> productId
+        try {
+          const pRes = await fetch(`${getApiUrl()}/products?limit=5&search=${encodeURIComponent(query.trim())}`, { headers: getAuthHeaders() });
+          if (pRes.ok) {
+            const pData = await pRes.json();
+            const productsList = pData.products || pData.data?.products || pData || [];
+            const first = Array.isArray(productsList) && productsList.length > 0 ? productsList[0] : null;
+            if (first && first.id) {
+              params.append('productId', String(first.id));
+            }
+          }
+        } catch (err) {
+          // ignore product lookup errors and continue without product filter
+          console.warn('Product lookup for stock search failed', err);
+        }
+      }
 
       const url = `${getApiUrl()}/stocks?${params}`;
 
@@ -223,31 +243,40 @@ export default function StocksPage() {
     storeId: number,
     quantity: number
   ): Promise<void> => {
+    try {
+      if (!productId || !storeId || !quantity) {
+        throw new Error('All fields are required');
+      }
 
-    if (!productId || !storeId || !quantity) {
-      throw new Error('All fields are required');
+      if (quantity <= 0) {
+        throw new Error('Quantity must be greater than 0');
+      }
+
+      const response = await fetch(`${getApiUrl()}/stocks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ productId, storeId, quantity }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const err = new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+        (err as any).status = response.status;
+        throw err;
+      }
+
+      setCreateModal(false); // Close modal on success
+      await fetchStocks(1);
+      toast.success('Stock created successfully');
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to create stock';
+      const isForbidden = err?.status === 403 || /forbid|forbidden|super admin/i.test(msg);
+      toast.error(isForbidden ? 'Forbidden Action Restricted to super-admin users only' : msg);
+      throw err;
     }
-
-    if (quantity <= 0) {
-      throw new Error('Quantity must be greater than 0');
-    }
-
-    const response = await fetch(`${getApiUrl()}/stocks`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders(),
-      },
-      body: JSON.stringify({ productId, storeId, quantity }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
-    }
-
-    setCreateModal(false); // Close modal on success
-    await fetchStocks(1);
   };
 
   // Update stock
@@ -256,22 +285,31 @@ export default function StocksPage() {
     quantityChange: number,
     reason: string
   ): Promise<void> => {
+    try {
+      const response = await fetch(`${getApiUrl()}/stocks/${stockId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ quantityChange, reason }),
+      });
 
-    const response = await fetch(`${getApiUrl()}/stocks/${stockId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders(),
-      },
-      body: JSON.stringify({ quantityChange, reason }),
-    });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const err = new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+        (err as any).status = response.status;
+        throw err;
+      }
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+      await fetchStocks(pagination.page);
+      toast.success('Stock updated successfully');
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to update stock';
+      const isForbidden = err?.status === 403 || /forbid|forbidden|super admin/i.test(msg);
+      toast.error(isForbidden ? 'Forbidden Action Restricted to super-admin users only' : msg);
+      throw err;
     }
-
-    await fetchStocks(pagination.page);
   };
 
   // ===================== HANDLER UNTUK TOMBOL UPDATE & HISTORY =====================
@@ -301,7 +339,7 @@ export default function StocksPage() {
 
   useEffect(() => {
     fetchStocks(1);
-  }, [selectedStore, userStoreId]);
+  }, [selectedStore, userStoreId, query]);
 
   // Get effective store ID for create modal
   const effectiveStoreId = isSuperAdmin ? undefined : userStoreId;
@@ -322,7 +360,7 @@ export default function StocksPage() {
               : 'Manage inventory for your store'}
           </p>
         </div>
-        <button
+          <button
           onClick={() => setCreateModal(true)}
           disabled={isSuperAdminWithoutStore}
           className={`btn btn-primary gap-2 w-full sm:w-auto ${
@@ -335,6 +373,10 @@ export default function StocksPage() {
           <FiPlus className="w-5 h-5" />
           Add Stock
         </button>
+      </div>
+
+      <div className="mt-4 max-w-md">
+        <SearchBar value={query} onChange={setQuery} placeholder="Search stocks..." />
       </div>
 
       {/* Store Filter (Super Admin only) - ✅ RESPONSIVE */}

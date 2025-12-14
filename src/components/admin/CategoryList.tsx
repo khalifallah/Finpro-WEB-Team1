@@ -27,16 +27,6 @@ export default function CategoryList({
 }: CategoryListProps) {
   const columns: DataTableColumn<Category>[] = [
     {
-      key: 'id',
-      header: 'ID',
-      render: (value) => (
-        <span className="font-mono text-xs font-semibold text-gray-700">
-          #{value}
-        </span>
-      ),
-      className: 'w-16',
-    },
-    {
       key: 'name',
       header: 'Category Name',
       render: (value) => (

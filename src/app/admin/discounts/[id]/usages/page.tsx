@@ -42,6 +42,7 @@ export default function DiscountUsagesPage() {
   const [usages, setUsages] = useState<DiscountUsage[]>([]);
   const [discountInfo, setDiscountInfo] = useState<DiscountInfo | null>(null);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
   const [summary, setSummary] = useState({ totalUsages: 0, totalDiscountGiven: 0 });
 
@@ -65,6 +66,7 @@ export default function DiscountUsagesPage() {
     try {
       setLoading(true);
       const params = new URLSearchParams({ page: String(page), limit: String(pagination.limit) });
+      if (query) params.append('search', query.trim());
       
       const res = await fetch(`${getApiUrl()}/discounts/${discountId}/usages?${params}`, { 
         headers: getAuthHeaders() 
@@ -95,14 +97,21 @@ export default function DiscountUsagesPage() {
     } finally {
       setLoading(false);
     }
-  }, [discountId, pagination.limit, getAuthHeaders]);
+  }, [discountId, pagination.limit, getAuthHeaders, query]);
 
+  // Fetch discount info once when discountId changes
   useEffect(() => {
     if (discountId) {
       fetchDiscountInfo();
+    }
+  }, [discountId, fetchDiscountInfo]);
+
+  // Fetch usages when discountId or query changes (reset to page 1)
+  useEffect(() => {
+    if (discountId) {
       fetchUsages(1);
     }
-  }, [discountId, fetchDiscountInfo, fetchUsages]);
+  }, [discountId, fetchUsages, query]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('id-ID', { 
@@ -133,21 +142,7 @@ export default function DiscountUsagesPage() {
 
   // Table columns
   const columns = [
-    {
-      key: 'id',
-      header: 'Usage ID',
-      render: (value: number) => <span className="font-mono text-sm font-bold text-gray-900">#{value}</span>,
-      className: 'w-24',
-    },
-    {
-      key: 'orderId',
-      header: 'Order ID',
-      render: (value: number) => (
-        <Link href={`/admin/orders/${value}`} className="text-blue-600 hover:underline font-semibold">
-          #{value}
-        </Link>
-      ),
-    },
+    
     {
       key: 'order',
       header: 'Customer',
@@ -197,6 +192,7 @@ export default function DiscountUsagesPage() {
           </p>
         </div>
       </div>
+      {/* Search removed */}
 
       {/* Discount Info Card - ✅ RESPONSIVE */}
       {discountInfo && (
@@ -226,10 +222,7 @@ export default function DiscountUsagesPage() {
                 )}
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500">Discount ID</p>
-              <p className="text-2xl font-bold text-gray-900">#{discountInfo.id}</p>
-            </div>
+            {/* Discount ID hidden from UI; id still available on data for internal use */}
           </div>
         </div>
       )}
@@ -300,14 +293,12 @@ export default function DiscountUsagesPage() {
 
       {/* Export Button - ✅ RESPONSIVE */}
       <div className="flex justify-end">
-        <button 
+            <button 
           onClick={() => {
             // Simple CSV export
             const csvContent = [
-              ['Usage ID', 'Order ID', 'Email', 'Discount Amount', 'Order Total', 'Used At'],
+              ['Email', 'Discount Amount', 'Order Total', 'Used At'],
               ...usages.map(u => [
-                u.id,
-                u.orderId,
                 u.order?.user?.email || '-',
                 u.amount,
                 u.order?.totalAmount || 0,
