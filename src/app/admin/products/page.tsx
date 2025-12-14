@@ -7,6 +7,7 @@ import SearchBar from '@/components/common/SearchBar';
 import Pagination from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import AdminProductList from '@/components/admin/AdminProductList';
+import ProductPhotosModal from '@/components/admin/ProductPhotosModal';
 import { ProductResponse } from '@/types/product.types';
 import { productService } from '@/services/productService';
 import { toast } from 'sonner';
@@ -34,6 +35,9 @@ export default function ProductPage() {
     productId?: number;
     productName?: string;
   }>({ isOpen: false });
+
+  const [photosModalOpen, setPhotosModalOpen] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -205,6 +209,10 @@ export default function ProductPage() {
           onDelete={(id, name) =>
             setDeleteConfirm({ isOpen: true, productId: id, productName: name })
           }
+          onViewPhotos={(images: string[]) => {
+            setPhotos(images || []);
+            setPhotosModalOpen(true);
+          }}
         />
 
         {/* Pagination */}
@@ -235,6 +243,8 @@ export default function ProductPage() {
         type="danger"
         loading={loading}
       />
+
+      <ProductPhotosModal isOpen={photosModalOpen} images={photos} onClose={() => setPhotosModalOpen(false)} />
     </div>
   );
 }

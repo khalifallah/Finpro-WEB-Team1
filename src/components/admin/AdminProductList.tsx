@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { FiImage } from 'react-icons/fi';
 import Link from 'next/link';
 import DataTable, { DataTableColumn } from '@/components/common/DataTable';
 import { ProductResponse } from '@/types/product.types';
@@ -9,12 +10,14 @@ interface AdminProductListProps {
   products: ProductResponse[];
   loading?: boolean;
   onDelete?: (id: number, name: string) => void;
+  onViewPhotos?: (images: string[]) => void;
 }
 
 export default function AdminProductList({
   products,
   loading = false,
   onDelete,
+  onViewPhotos,
 }: AdminProductListProps) {
   const columns: DataTableColumn<ProductResponse>[] = [
     {
@@ -80,6 +83,20 @@ export default function AdminProductList({
       header: 'Actions',
       render: (value, item) => (
         <div className="flex gap-2 justify-end">
+            {((item.images && item.images.length > 0) || (item as any).productImages?.length > 0) && (
+            <button
+              onClick={() => {
+                const imgs = (item.images && item.images.length > 0)
+                  ? item.images.map((i: any) => i.imageUrl)
+                  : (item as any).productImages?.map((i: any) => i.imageUrl) || [];
+                onViewPhotos?.(imgs);
+              }}
+              className="btn btn-sm btn-ghost hover:bg-blue-100"
+              title="View photos"
+            >
+              <FiImage className="w-6 h-6 bg-blue-300" />
+            </button>
+          )}
           <Link
             href={`/admin/products/${value}`}
             className="btn btn-sm btn-primary text-white hover:bg-blue-700"
