@@ -95,8 +95,9 @@ export default function DiscountsPage() {
       const params = new URLSearchParams({ page: String(page), limit: String(pagination.limit) });
       const storeIdToUse = isSuperAdmin ? selectedStore : userStoreId;
       if (storeIdToUse) params.append('storeId', String(storeIdToUse));
+      let usedProductFilter = false;
       if (query) {
-        // Backend doesn't support free-text 'search' for discounts; resolve text -> productId
+        // Try resolving text -> productId (backend filters discounts by productId)
         try {
           const pRes = await fetch(`${getApiUrl()}/products?limit=5&search=${encodeURIComponent(query.trim())}`, { headers: getAuthHeaders() });
           if (pRes.ok) {
@@ -105,6 +106,7 @@ export default function DiscountsPage() {
             const first = Array.isArray(productsList) && productsList.length > 0 ? productsList[0] : null;
             if (first && first.id) {
               params.append('productId', String(first.id));
+              usedProductFilter = true;
             }
           }
         } catch (err) {
@@ -117,8 +119,22 @@ export default function DiscountsPage() {
       const discountsData = data.rules || data.data?.rules || data.discounts || [];
       const totalCount = data.total || data.data?.total || 0;
 
-      setDiscounts(Array.isArray(discountsData) ? discountsData : []);
-      setPagination({ page, limit: pagination.limit, total: totalCount, totalPages: Math.ceil(totalCount / pagination.limit) });
+      const discountsList = Array.isArray(discountsData) ? discountsData : [];
+
+      // If user searched but we didn't map to a productId, perform client-side filter by discount description or product name
+      let finalList = discountsList;
+      let finalTotal = totalCount;
+      if (query && !usedProductFilter) {
+        const q = query.trim().toLowerCase();
+        finalList = discountsList.filter(d =>
+          (d.description && d.description.toLowerCase().includes(q)) ||
+          (d.product && d.product.name && d.product.name.toLowerCase().includes(q))
+        );
+        finalTotal = finalList.length;
+      }
+
+      setDiscounts(finalList);
+      setPagination({ page, limit: pagination.limit, total: finalTotal, totalPages: Math.ceil(finalTotal / pagination.limit) });
     } catch (e) { console.error('Failed:', e); setDiscounts([]); }
     finally { setLoading(false); }
   }, [pagination.limit, isSuperAdmin, selectedStore, userStoreId, getAuthHeaders, query]);
