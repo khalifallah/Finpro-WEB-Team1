@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import DataTable from '@/components/common/DataTable';
 import SearchBar from '@/components/common/SearchBar';
-import { FiBarChart2, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiBarChart2, FiEdit2, FiTrash2, FiPercent, FiDollarSign, FiGift } from 'react-icons/fi';
 import { toast } from 'sonner';
 import Pagination from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -200,10 +200,29 @@ export default function DiscountsPage() {
 
   const getDiscountTypeLabel = (type: string) => {
     switch (type) {
-      case 'DIRECT_PERCENTAGE': return '📊 Percentage';
-      case 'DIRECT_NOMINAL': return '💵 Fixed Amount';
-      case 'BOGO': return '🎁 Buy 1 Get 1';
-      default: return type;
+      case 'DIRECT_PERCENTAGE':
+        return (
+          <>
+            <FiPercent className="h-4 w-4" />
+            <span> Percentage</span>
+          </>
+        );
+      case 'DIRECT_NOMINAL':
+        return (
+          <>
+            <FiDollarSign className="h-4 w-4" />
+            <span> Fixed Amount</span>
+          </>
+        );
+      case 'BOGO':
+        return (
+          <>
+            <FiGift className="h-4 w-4" />
+            <span> Buy 1 Get 1</span>
+          </>
+        );
+      default:
+        return type;
     }
   };
 
