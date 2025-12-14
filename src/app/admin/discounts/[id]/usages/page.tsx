@@ -142,15 +142,7 @@ export default function DiscountUsagesPage() {
 
   // Table columns
   const columns = [
-    {
-      key: 'orderId',
-      header: 'Order ID',
-      render: (value: number) => (
-        <Link href={`/admin/orders/${value}`} className="text-blue-600 hover:underline font-semibold">
-          #{value}
-        </Link>
-      ),
-    },
+    
     {
       key: 'order',
       header: 'Customer',
@@ -305,9 +297,8 @@ export default function DiscountUsagesPage() {
           onClick={() => {
             // Simple CSV export
             const csvContent = [
-              ['Order ID', 'Email', 'Discount Amount', 'Order Total', 'Used At'],
+              ['Email', 'Discount Amount', 'Order Total', 'Used At'],
               ...usages.map(u => [
-                u.orderId,
                 u.order?.user?.email || '-',
                 u.amount,
                 u.order?.totalAmount || 0,
