@@ -42,6 +42,7 @@ export default function DiscountUsagesPage() {
   const [usages, setUsages] = useState<DiscountUsage[]>([]);
   const [discountInfo, setDiscountInfo] = useState<DiscountInfo | null>(null);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
   const [summary, setSummary] = useState({ totalUsages: 0, totalDiscountGiven: 0 });
 
@@ -65,6 +66,7 @@ export default function DiscountUsagesPage() {
     try {
       setLoading(true);
       const params = new URLSearchParams({ page: String(page), limit: String(pagination.limit) });
+      if (query) params.append('search', query.trim());
       
       const res = await fetch(`${getApiUrl()}/discounts/${discountId}/usages?${params}`, { 
         headers: getAuthHeaders() 
@@ -95,14 +97,21 @@ export default function DiscountUsagesPage() {
     } finally {
       setLoading(false);
     }
-  }, [discountId, pagination.limit, getAuthHeaders]);
+  }, [discountId, pagination.limit, getAuthHeaders, query]);
 
+  // Fetch discount info once when discountId changes
   useEffect(() => {
     if (discountId) {
       fetchDiscountInfo();
+    }
+  }, [discountId, fetchDiscountInfo]);
+
+  // Fetch usages when discountId or query changes (reset to page 1)
+  useEffect(() => {
+    if (discountId) {
       fetchUsages(1);
     }
-  }, [discountId, fetchDiscountInfo, fetchUsages]);
+  }, [discountId, fetchUsages, query]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('id-ID', { 
@@ -191,6 +200,7 @@ export default function DiscountUsagesPage() {
           </p>
         </div>
       </div>
+      {/* Search removed */}
 
       {/* Discount Info Card - ✅ RESPONSIVE */}
       {discountInfo && (

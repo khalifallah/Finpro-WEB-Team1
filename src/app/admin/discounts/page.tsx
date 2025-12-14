@@ -40,6 +40,7 @@ export default function DiscountsPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState('');
   const [selectedStore, setSelectedStore] = useState<number | null>(null);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; discountId?: number; discountName?: string }>({ isOpen: false });
@@ -93,6 +94,7 @@ export default function DiscountsPage() {
       const params = new URLSearchParams({ page: String(page), limit: String(pagination.limit) });
       const storeIdToUse = isSuperAdmin ? selectedStore : userStoreId;
       if (storeIdToUse) params.append('storeId', String(storeIdToUse));
+      if (query) params.append('search', query.trim());
 
       const res = await fetch(`${getApiUrl()}/discounts?${params}`, { headers: getAuthHeaders() });
       const data = await res.json();
@@ -103,10 +105,10 @@ export default function DiscountsPage() {
       setPagination({ page, limit: pagination.limit, total: totalCount, totalPages: Math.ceil(totalCount / pagination.limit) });
     } catch (e) { console.error('Failed:', e); setDiscounts([]); }
     finally { setLoading(false); }
-  }, [pagination.limit, isSuperAdmin, selectedStore, userStoreId, getAuthHeaders]);
+  }, [pagination.limit, isSuperAdmin, selectedStore, userStoreId, getAuthHeaders, query]);
 
   useEffect(() => { fetchStores(); fetchProducts(); }, [fetchStores, fetchProducts]);
-  useEffect(() => { if (isSuperAdmin || userStoreId) fetchDiscounts(1); }, [selectedStore, userStoreId, isSuperAdmin, fetchDiscounts]);
+  useEffect(() => { if (isSuperAdmin || userStoreId) fetchDiscounts(1); }, [selectedStore, userStoreId, isSuperAdmin, fetchDiscounts, query]);
 
   const handleCreate = () => {
     if (!isSuperAdmin && !userStoreId) { alert('Store not assigned.'); return; }
@@ -271,7 +273,7 @@ export default function DiscountsPage() {
             {isSuperAdmin ? 'Manage discounts across all stores' : `Managing: ${userStoreName}`}
           </p>
         </div>
-        <button onClick={handleCreate} disabled={!isSuperAdmin && !userStoreId}
+          <button onClick={handleCreate} disabled={!isSuperAdmin && !userStoreId}
           className="px-4 py-2 sm:px-5 sm:py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2 disabled:opacity-50 w-full sm:w-auto">
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -279,6 +281,8 @@ export default function DiscountsPage() {
           New Discount
         </button>
       </div>
+
+      {/* Search removed */}
 
       {/* Store Filter (Super Admin) - ✅ RESPONSIVE */}
       {isSuperAdmin && (

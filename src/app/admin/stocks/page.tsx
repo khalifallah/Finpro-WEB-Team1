@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Pagination from '@/components/common/Pagination';
+import SearchBar from '@/components/common/SearchBar';
 import StockList from '@/components/admin/StockList';
 import StockUpdateModal from '@/components/admin/StockUpdateModal';
 import StockJournalModal from '@/components/admin/StockJournalModal';
@@ -45,6 +46,7 @@ export default function StocksPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState('');
   const [selectedStore, setSelectedStore] = useState<number | null>(null);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -164,6 +166,23 @@ export default function StocksPage() {
       const storeIdToUse = isSuperAdmin ? selectedStore : userStoreId;
       if (storeIdToUse) {
         params.append('storeId', String(storeIdToUse));
+      }
+      if (query) {
+        // Backend stocks endpoint filters by productId, not text — resolve text -> productId
+        try {
+          const pRes = await fetch(`${getApiUrl()}/products?limit=5&search=${encodeURIComponent(query.trim())}`, { headers: getAuthHeaders() });
+          if (pRes.ok) {
+            const pData = await pRes.json();
+            const productsList = pData.products || pData.data?.products || pData || [];
+            const first = Array.isArray(productsList) && productsList.length > 0 ? productsList[0] : null;
+            if (first && first.id) {
+              params.append('productId', String(first.id));
+            }
+          }
+        } catch (err) {
+          // ignore product lookup errors and continue without product filter
+          console.warn('Product lookup for stock search failed', err);
+        }
       }
 
       const url = `${getApiUrl()}/stocks?${params}`;
@@ -320,7 +339,7 @@ export default function StocksPage() {
 
   useEffect(() => {
     fetchStocks(1);
-  }, [selectedStore, userStoreId]);
+  }, [selectedStore, userStoreId, query]);
 
   // Get effective store ID for create modal
   const effectiveStoreId = isSuperAdmin ? undefined : userStoreId;
@@ -341,7 +360,7 @@ export default function StocksPage() {
               : 'Manage inventory for your store'}
           </p>
         </div>
-        <button
+          <button
           onClick={() => setCreateModal(true)}
           disabled={isSuperAdminWithoutStore}
           className={`btn btn-primary gap-2 w-full sm:w-auto ${
@@ -354,6 +373,10 @@ export default function StocksPage() {
           <FiPlus className="w-5 h-5" />
           Add Stock
         </button>
+      </div>
+
+      <div className="mt-4 max-w-md">
+        <SearchBar value={query} onChange={setQuery} placeholder="Search stocks..." />
       </div>
 
       {/* Store Filter (Super Admin only) - ✅ RESPONSIVE */}
