@@ -366,11 +366,15 @@ export default function StocksPage() {
       if (query) params.set('search', query);
       if (selectedStore) params.set('storeId', String(selectedStore));
       params.set('page', String(resetTo));
-      router.replace(`${pathname}?${params.toString()}`);
+      // Only reset URL and fetch when there is no existing `page` param.
+      // This avoids overriding a user-loaded `?page=2` on refresh.
+      if (!searchParams?.get('page')) {
+        router.replace(`${pathname}?${params.toString()}`);
+        fetchStocks(resetTo);
+      }
     } catch (e) {
       // ignore router errors
     }
-    fetchStocks(resetTo);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStore, userStoreId, query]);
 
