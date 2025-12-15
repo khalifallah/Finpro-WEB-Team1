@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { FiPackage, FiPlus } from 'react-icons/fi';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import SearchBar from '@/components/common/SearchBar';
@@ -167,14 +168,14 @@ export default function ProductPage() {
       {/* Header - ✅ RESPONSIVE */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Products</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            <span className="inline-flex items-center gap-2"><FiPackage className="h-6 w-6 text-gray-700" />Products</span>
+          </h1>
           <p className="text-gray-600 mt-2 text-sm">Manage all products ({pagination.total} total)</p>
         </div>
-        <Link href="/admin/products/new" className="btn btn-primary gap-2 w-full sm:w-auto">
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-          </svg>
-          New Product
+        <Link href="/admin/products/new" className="btn btn-primary gap-2 w-full sm:w-auto inline-flex items-center">
+          <FiPlus className="h-4 w-4" />
+          <span>New Product</span>
         </Link>
       </div>
 
@@ -189,12 +190,12 @@ export default function ProductPage() {
       )}
 
       {/* Search - ✅ RESPONSIVE */}
-      <div className="bg-gray-100 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-300">
+      <div className="bg-gray-100 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-300 transition-shadow hover:shadow">
         <SearchBar value={searchQuery} onChange={handleSearch} placeholder="Search products..." />
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-shadow hover:shadow-lg">
         {products.length > 0 && (
           <div className="px-4 py-2 sm:px-6 sm:py-3 bg-gray-50 border-b border-gray-200">
             <p className="text-sm text-gray-600 font-medium">
@@ -206,6 +207,7 @@ export default function ProductPage() {
         <AdminProductList
           products={products}
           loading={loading}
+          showStock={false}
           onDelete={(id, name) =>
             setDeleteConfirm({ isOpen: true, productId: id, productName: name })
           }
