@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import DataTable from '@/components/common/DataTable';
 import SearchBar from '@/components/common/SearchBar';
-import { FiBarChart2, FiEdit2, FiTrash2, FiPercent, FiDollarSign, FiGift } from 'react-icons/fi';
+import { FiBarChart2, FiEdit2, FiTrash2, FiPercent, FiDollarSign, FiGift, FiShoppingBag, FiAlertTriangle } from 'react-icons/fi';
 import { toast } from 'sonner';
 import Pagination from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -92,17 +92,18 @@ export default function DiscountsPage() {
     } catch (e) { console.error('Failed to fetch products:', e); }
   }, [getAuthHeaders]);
 
-  const fetchDiscounts = useCallback(async (page: number = 1) => {
+  const fetchDiscounts = useCallback(async (page: number = 1, searchOverride?: string) => {
     try {
       setLoading(true);
       const params = new URLSearchParams({ page: String(page), limit: String(pagination.limit) });
       const storeIdToUse = isSuperAdmin ? selectedStore : userStoreId;
       if (storeIdToUse) params.append('storeId', String(storeIdToUse));
       let usedProductFilter = false;
-      if (query) {
+      const effectiveQuery = typeof searchOverride === 'string' ? searchOverride : query;
+      if (effectiveQuery) {
         // Try resolving text -> productId (backend filters discounts by productId)
         try {
-          const pRes = await fetch(`${getApiUrl()}/products?limit=5&search=${encodeURIComponent(query.trim())}`, { headers: getAuthHeaders() });
+          const pRes = await fetch(`${getApiUrl()}/products?limit=5&search=${encodeURIComponent(effectiveQuery.trim())}`, { headers: getAuthHeaders() });
           if (pRes.ok) {
             const pData = await pRes.json();
             const productsList = pData.products || pData.data?.products || pData || [];
@@ -127,8 +128,9 @@ export default function DiscountsPage() {
       // If user searched but we didn't map to a productId, perform client-side filter by discount description or product name
       let finalList = discountsList;
       let finalTotal = totalCount;
-      if (query && !usedProductFilter) {
-        const q = query.trim().toLowerCase();
+      const effectiveQuery2 = typeof searchOverride === 'string' ? searchOverride : query;
+      if (effectiveQuery2 && !usedProductFilter) {
+        const q = effectiveQuery2.trim().toLowerCase();
         finalList = discountsList.filter(d =>
           (d.description && d.description.toLowerCase().includes(q)) ||
           (d.product && d.product.name && d.product.name.toLowerCase().includes(q))
@@ -338,7 +340,7 @@ export default function DiscountsPage() {
         const isExpired = date < new Date();
         return (
           <span className={`font-medium ${isExpired ? 'text-red-600 font-bold' : 'text-gray-700'}`}>
-            {date.toLocaleDateString('id-ID')}{isExpired && ' ⚠️'}
+            {date.toLocaleDateString('id-ID')}{isExpired && <FiAlertTriangle className="inline-block ml-2 h-4 w-4 text-red-600" />}
           </span>
         );
       },
@@ -375,7 +377,9 @@ export default function DiscountsPage() {
       {/* Header - ✅ RESPONSIVE */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Discount Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            <span className="inline-flex items-center gap-2"><FiPercent className="h-5 w-5 text-gray-700" />Discount Management</span>
+          </h1>
           <p className="text-gray-600 mt-1">
             {isSuperAdmin ? 'Manage discounts across all stores' : `Managing: ${userStoreName}`}
           </p>
@@ -390,7 +394,7 @@ export default function DiscountsPage() {
       </div>
 
       <div className="mt-4 max-w-xl">
-        <SearchBar value={query} onChange={setQuery} placeholder="Search discounts..." />
+        <SearchBar value={query} onChange={handleSearch} placeholder="Search discounts..." />
       </div>
 
       {/* Store Filter (Super Admin) - ✅ RESPONSIVE */}
@@ -407,8 +411,10 @@ export default function DiscountsPage() {
 
       {/* Store Admin Info - ✅ RESPONSIVE */}
       {!isSuperAdmin && (
-        <div className={`rounded-lg p-3 sm:p-4 flex items-center gap-3 border ${userStoreId ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'}`}>
-          <span className="text-2xl">{userStoreId ? '🏪' : '⚠️'}</span>
+        <div className={`rounded-lg p-3 sm:p-4 flex items-center gap-3 border shadow-sm ${userStoreId ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'}`}>
+          <span className="text-2xl flex-shrink-0">
+            {userStoreId ? <FiShoppingBag className="h-6 w-6 text-green-700" /> : <FiAlertTriangle className="h-6 w-6 text-red-700" />}
+          </span>
           <div>
             <p className={`font-semibold ${userStoreId ? 'text-green-800' : 'text-red-800'}`}>
               {userStoreId ? `Your Store: ${userStoreName}` : 'Store Not Assigned'}

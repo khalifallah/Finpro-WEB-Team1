@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { FiHome, FiLogOut } from "react-icons/fi";
 
 // ===================== TYPE DEFINITION =====================
 interface MenuItem {
@@ -453,6 +454,20 @@ export default function AdminLayout({
                     {userInitial}
                   </div>
                 </label>
+                <ul tabIndex={0} className="dropdown-content menu p-3 shadow-lg bg-white rounded-box w-48 mt-2 border">
+                  <li>
+                    <Link href="/" className="flex items-center gap-2 px-2 py-2 hover:bg-gray-50 text-gray-800">
+                      <FiHome className="w-4 h-4" />
+                      <span className="font-medium">Back to Store</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <button onClick={handleLogout} className="flex items-center gap-2 w-full text-left px-2 py-2 hover:bg-gray-50 text-red-600">
+                      <FiLogOut className="w-4 h-4" />
+                      <span>Logout</span>
+                    </button>
+                  </li>
+                </ul>
               </div>
             </div>
           </div>

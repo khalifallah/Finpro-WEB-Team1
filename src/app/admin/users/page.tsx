@@ -8,6 +8,7 @@ import Pagination from '@/components/common/Pagination';
 import UserFormModal from '@/components/forms/UserFormModal';
 import UserDeleteDialog from '@/components/forms/UserDeleteDialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { FiUsers, FiLock, FiChevronLeft, FiEdit2, FiTrash2 } from 'react-icons/fi';
 
 interface User {
   id: number;
@@ -306,10 +307,14 @@ export default function UsersPage() {
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">403 - Access Denied</h1>
-          <p className="text-gray-600 text-lg mb-6">
-            🔐 User Management is restricted to <span className="font-bold text-red-600">Super Admin</span> only
+          <p className="text-gray-600 text-lg mb-6 inline-flex items-center justify-center gap-2">
+            <FiLock className="h-5 w-5 text-gray-600" />
+            <span>User Management is restricted to <span className="font-bold text-red-600">Super Admin</span> only</span>
           </p>
-          <Link href="/admin/dashboard" className="btn btn-primary">← Back to Dashboard</Link>
+          <Link href="/admin/dashboard" className="btn btn-primary inline-flex items-center gap-2">
+            <FiChevronLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Link>
         </div>
       </div>
     );
@@ -320,7 +325,9 @@ export default function UsersPage() {
       {/* Header - ✅ RESPONSIVE */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-black">👥 User Management</h1>
+          <h1 className="text-3xl font-bold text-black">
+            <span className="inline-flex items-center gap-2"><FiUsers className="h-6 w-6 text-gray-700" />User Management</span>
+          </h1>
           <p className="text-black mt-2 text-sm">Manage system users and store admin accounts</p>
         </div>
         <button onClick={handleCreate} className="btn btn-primary gap-2 w-full sm:w-auto">
@@ -388,8 +395,12 @@ export default function UsersPage() {
                         </span>
                       </td>
                       <td className="flex gap-2">
-                        <button onClick={() => handleEdit(usr)} className="btn btn-sm btn-ghost" title="Edit">✏️</button>
-                        <button onClick={() => setDeleteConfirm({ isOpen: true, userId: usr.id, userName: usr.fullName })} className="btn btn-sm btn-ghost text-error" title="Delete">🗑️</button>
+                        <button onClick={() => handleEdit(usr)} className="btn btn-sm btn-ghost" title="Edit">
+                          <FiEdit2 className="h-4 w-4 text-blue-500" />
+                        </button>
+                        <button onClick={() => setDeleteConfirm({ isOpen: true, userId: usr.id, userName: usr.fullName })} className="btn btn-sm btn-ghost text-error" title="Delete">
+                          <FiTrash2 className="h-4 w-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}

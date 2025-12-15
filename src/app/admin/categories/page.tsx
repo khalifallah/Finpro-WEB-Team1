@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { FiTag, FiPlus } from 'react-icons/fi';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import SearchBar from '@/components/common/SearchBar';
 import Pagination from '@/components/common/Pagination';
@@ -221,17 +222,15 @@ export default function CategoriesPage() {
       {/* Header - ✅ RESPONSIVE */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Categories</h1>
-          <p className="text-gray-600 mt-1">
-            {isSuperAdmin ? 'Manage product categories' : 'View categories (Read Only)'}
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            <span className="inline-flex items-center gap-2"><FiTag className="h-6 w-6 text-gray-700" />Categories</span>
+          </h1>
+          <p className="text-gray-600 mt-1">{isSuperAdmin ? 'Manage product categories' : 'View categories (Read Only)'}</p>
         </div>
         {isSuperAdmin && (
-          <button onClick={handleCreate} className="btn btn-primary gap-2 w-full sm:w-auto">
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-            </svg>
-            New Category
+          <button onClick={handleCreate} className="btn btn-primary gap-2 w-full sm:w-auto inline-flex items-center">
+            <FiPlus className="h-4 w-4" />
+            <span>New Category</span>
           </button>
         )}
       </div>
@@ -253,7 +252,7 @@ export default function CategoriesPage() {
       )}
 
       {/* Search - ✅ RESPONSIVE */}
-      <div className="bg-gray-100 p-2 sm:p-4 rounded-lg shadow-sm border border-gray-300">
+      <div className="bg-gray-100 p-2 sm:p-4 rounded-xl shadow-sm border border-gray-300 transition-shadow hover:shadow">
         <SearchBar
           value={searchQuery}
           onChange={handleSearch}
@@ -262,7 +261,7 @@ export default function CategoriesPage() {
       </div>
 
       {/* Table - ✅ RESPONSIVE */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-shadow hover:shadow-lg">
         {categories.length > 0 && (
           <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200">
             <p className="text-sm text-gray-600 font-medium">

@@ -16,7 +16,7 @@ export default function SearchBar({
   debounceMs = 500,
 }: SearchBarProps) {
   const [inputValue, setInputValue] = useState(value);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceTimer = useRef<number | null>(null);
 
   useEffect(() => {
     setInputValue(value);
@@ -27,20 +27,49 @@ export default function SearchBar({
     setInputValue(newValue);
 
     // Clear previous timer
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
+    if (debounceTimer.current !== null) {
+      window.clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
     }
 
     // Set new timer
-    debounceTimer.current = setTimeout(() => {
+    debounceTimer.current = window.setTimeout(() => {
+      debounceTimer.current = null;
       onChange(newValue);
     }, debounceMs);
   };
 
   const handleClear = () => {
     setInputValue('');
+    // cancel pending debounce and notify parent immediately
+    if (debounceTimer.current !== null) {
+      window.clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+    }
     onChange('');
   };
+
+  // trigger immediate search on Enter, support Escape to clear
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      if (debounceTimer.current !== null) {
+        window.clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
+      }
+      onChange(inputValue);
+    } else if (e.key === 'Escape') {
+      handleClear();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current !== null) {
+        window.clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div className="relative w-full">
@@ -65,6 +94,7 @@ export default function SearchBar({
           type="text"
           value={inputValue}
           onChange={handleChange}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className="w-full pl-12 pr-10 py-3 
             bg-white text-gray-900 text-sm

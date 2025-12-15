@@ -10,7 +10,7 @@ import StockUpdateModal from '@/components/admin/StockUpdateModal';
 import StockJournalModal from '@/components/admin/StockJournalModal';
 import StockCreateModal from '@/components/admin/StockCreateModal';
 import { useAuth } from '@/contexts/AuthContext';
-import { FiPlus } from 'react-icons/fi';
+import { FiPlus, FiShoppingBag, FiAlertTriangle, FiPackage } from 'react-icons/fi';
 
 interface Stock {
   id: number;
@@ -366,12 +366,10 @@ export default function StocksPage() {
       if (query) params.set('search', query);
       if (selectedStore) params.set('storeId', String(selectedStore));
       params.set('page', String(resetTo));
-      // Only reset URL and fetch when there is no existing `page` param.
-      // This avoids overriding a user-loaded `?page=2` on refresh.
-      if (!searchParams?.get('page')) {
-        router.replace(`${pathname}?${params.toString()}`);
-        fetchStocks(resetTo);
-      }
+      // Always update the URL and fetch page 1 when filters change
+      // so search input immediately reflects in the stocks list.
+      router.replace(`${pathname}?${params.toString()}`);
+      fetchStocks(resetTo);
     } catch (e) {
       // ignore router errors
     }
@@ -403,7 +401,9 @@ export default function StocksPage() {
       {/* Page Header - ✅ RESPONSIVE */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Stock Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            <span className="inline-flex items-center gap-2"><FiPackage className="h-6 w-6 text-gray-700" />Stock Management</span>
+          </h1>
           <p className="text-gray-600 mt-1">
             {isSuperAdmin
               ? 'Manage inventory across all stores'
@@ -451,8 +451,8 @@ export default function StocksPage() {
 
           <div className="form-control w-full max-w-xs">
             <label className="label">
-              <span className="label-text font-semibold text-gray-900">
-                🏪 Filter by Store <span className="text-red-500">*</span>
+              <span className="label-text font-semibold text-gray-900 flex items-center gap-2">
+                <FiShoppingBag className="w-4 h-4 text-gray-900" /> Filter by Store <span className="text-red-500">*</span>
               </span>
             </label>
             
@@ -484,8 +484,8 @@ export default function StocksPage() {
 
             {!selectedStore && !storesError && stores.length > 0 && (
               <label className="label pt-2">
-                <span className="label-text-alt text-red-600 font-medium">
-                  ⚠️ You must select a store to manage stocks
+                <span className="label-text-alt text-red-600 font-medium flex items-center gap-2">
+                  <FiAlertTriangle className="w-4 h-4" /> You must select a store to manage stocks
                 </span>
               </label>
             )}
@@ -519,12 +519,12 @@ export default function StocksPage() {
       )}
 
       {/* Stock List */}
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-50 shadow-sm overflow-hidden transition-shadow hover:shadow-md">
         <div className="px-4 py-2 sm:px-6 sm:py-3 bg-gray-50 border-b">
           <p className="text-sm text-gray-600">
             {isSuperAdminWithoutStore ? (
-              <span className="text-yellow-700 font-medium">
-                ⚠️ Select a store to see stocks
+              <span className="text-yellow-700 font-medium flex items-center gap-2">
+                <FiAlertTriangle className="w-4 h-4" /> Select a store to see stocks
               </span>
             ) : (
               <>

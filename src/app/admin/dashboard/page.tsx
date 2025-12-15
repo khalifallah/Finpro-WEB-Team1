@@ -3,6 +3,19 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  FiPackage,
+  FiTrendingUp,
+  FiGift,
+  FiBarChart2,
+  FiUsers,
+  FiLock,
+  FiMapPin,
+  FiCheck,
+  FiX,
+  FiAward,
+  FiShoppingCart,
+} from 'react-icons/fi';
 
 interface DashboardStats {
   totalProducts: number;
@@ -51,8 +64,9 @@ export default function DashboardPage() {
     <div className="space-y-6 sm:space-y-8">
       {/* Welcome Header - ✅ RESPONSIVE */}
       <div className="bg-gradient-to-r from-primary to-primary/80 rounded-xl p-4 sm:p-6 text-white">
-        <h1 className="text-2xl sm:text-3xl font-bold">
-          Welcome, {user?.fullName || 'Admin'}! 👋
+        <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+          Welcome, {user?.fullName || 'Admin'}
+          <FiUsers className="w-6 h-6 opacity-90" />
         </h1>
         <p className="mt-2 opacity-90 text-sm sm:text-base">
           {isSuperAdmin 
@@ -60,12 +74,12 @@ export default function DashboardPage() {
             : `You are managing store operations. Some features are read-only.`}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className={`badge ${isSuperAdmin ? 'badge-warning' : 'badge-info'} badge-sm sm:badge-lg`}>
-            {user?.role === 'SUPER_ADMIN' ? '👑 Super Admin' : '🏪 Store Admin'}
+          <span className={`badge ${isSuperAdmin ? 'badge-warning' : 'badge-info'} badge-sm sm:badge-lg flex items-center gap-2`}>
+            {user?.role === 'SUPER_ADMIN' ? <><FiAward className="w-4 h-4" /> Super Admin</> : <><FiShoppingCart className="w-4 h-4" /> Store Admin</>}
           </span>
           {user?.store && (
-            <span className="badge badge-outline badge-sm sm:badge-lg text-white border-white">
-              📍 {user.store.name}
+            <span className="badge badge-outline badge-sm sm:badge-lg text-white border-white flex items-center gap-2">
+              <FiMapPin className="w-4 h-4" /> {user.store.name}
             </span>
           )}
         </div>
@@ -91,10 +105,10 @@ export default function DashboardPage() {
         <h2 className="text-xl font-bold mb-4 text-black">Feature Overview</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {/* Product Management Card */}
-          <div className="card bg-white shadow-md text-black">
+          <div className="card bg-white shadow-md text-black rounded-xl border border-gray-50 hover:shadow-lg transition-shadow">
             <div className="card-body p-4 sm:p-6">
-              <h3 className="card-title text-base sm:text-lg">
-                📦 Product Management
+              <h3 className="card-title text-base sm:text-lg flex items-center gap-2">
+                <FiPackage className="w-5 h-5 text-primary" /> Product Management
                 {!isSuperAdmin && <span className="badge badge-ghost ml-2 text-xs">Read Only</span>}
               </h3>
               <ul className="list-disc list-inside text-xs sm:text-sm text-gray-600 space-y-1 mt-2">
@@ -120,9 +134,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Inventory Management Card */}
-          <div className="card bg-white shadow-md text-black">
+          <div className="card bg-white shadow-md text-black rounded-xl border border-gray-50 hover:shadow-lg transition-shadow">
             <div className="card-body p-4 sm:p-6">
-              <h3 className="card-title text-base sm:text-lg">📈 Inventory Management</h3>
+              <h3 className="card-title text-base sm:text-lg flex items-center gap-2"><FiTrendingUp className="w-5 h-5 text-primary" /> Inventory Management</h3>
               <ul className="list-disc list-inside text-xs sm:text-sm text-gray-600 space-y-1 mt-2">
                 <li>Manage stock per store</li>
                 <li>Create stock journals (add/reduce)</li>
@@ -140,9 +154,9 @@ export default function DashboardPage() {
           {/* ===================== Hide Discount Card for SUPER_ADMIN ===================== */}
           {/* Discount Management Card - STORE_ADMIN ONLY */}
           {!isSuperAdmin && (
-            <div className="card bg-white shadow-md">
+            <div className="card bg-white shadow-md rounded-xl border border-gray-50 hover:shadow-lg transition-shadow">
               <div className="card-body p-4 sm:p-6 text-black">
-                <h3 className="card-title text-base sm:text-lg">🎁 Discount Management</h3>
+                <h3 className="card-title text-base sm:text-lg flex items-center gap-2"><FiGift className="w-5 h-5 text-primary" /> Discount Management</h3>
                 <ul className="list-disc list-inside text-xs sm:text-sm text-gray-600 space-y-1 mt-2">
                   <li>Create product discounts</li>
                   <li>Set minimum purchase discounts</li>
@@ -160,9 +174,9 @@ export default function DashboardPage() {
           {/* ================================================================================= */}
 
           {/* Reports Card */}
-          <div className="card bg-white shadow-md">
+          <div className="card bg-white shadow-md rounded-xl border border-gray-50 hover:shadow-lg transition-shadow">
             <div className="card-body p-4 sm:p-6">
-              <h3 className="card-title text-base sm:text-lg text-black">📊 Reports & Analysis</h3>
+              <h3 className="card-title text-base sm:text-lg text-black flex items-center gap-2"><FiBarChart2 className="w-5 h-5 text-primary" /> Reports & Analysis</h3>
               <ul className="list-disc list-inside text-xs sm:text-sm text-gray-600 space-y-1 mt-2">
                 <li>Monthly sales report</li>
                 <li>Sales by category/product</li>
@@ -179,10 +193,10 @@ export default function DashboardPage() {
 
           {/* User Management Card - Super Admin Only */}
           {isSuperAdmin && (
-            <div className="card bg-white shadow-md md:col-span-2">
+            <div className="card bg-white shadow-md md:col-span-2 rounded-xl border border-gray-50 hover:shadow-lg transition-shadow">
               <div className="card-body p-4 sm:p-6 text-black">
-                <h3 className="card-title text-base sm:text-lg">
-                  👥 User Management
+                <h3 className="card-title text-base sm:text-lg flex items-center gap-2">
+                  <FiUsers className="w-5 h-5 text-primary" /> User Management
                   <span className="badge badge-warning ml-2 text-xs">Super Admin Only</span>
                 </h3>
                 <ul className="list-disc list-inside text-xs sm:text-sm text-gray-600 space-y-1 mt-2">
@@ -202,13 +216,13 @@ export default function DashboardPage() {
       </div>
 
       {/* Access Summary Table */}
-      <div className="card bg-white shadow-md text-black">
+      <div className="card bg-white shadow-md text-black rounded-xl border border-gray-50 hover:shadow-lg transition-shadow">
         <div className="card-body p-4 sm:p-6">
-          <h3 className="card-title mb-4 text-base sm:text-lg">🔐 Your Access Permissions</h3>
+          <h3 className="card-title mb-4 text-base sm:text-lg flex items-center gap-2"><FiLock className="w-5 h-5" /> Your Access Permissions</h3>
           <div className="overflow-x-auto">
             <table className="table text-xs sm:text-sm">
               {/* Header */}
-              <thead className="bg-gray-800 text-white">
+              <thead className="bg-blue-500 text-white">
                 <tr>
                   <th className="text-white font-semibold text-xs sm:text-sm">Feature</th>
                   <th className="text-white font-semibold text-center text-xs sm:text-sm">View</th>
@@ -220,32 +234,32 @@ export default function DashboardPage() {
               <tbody>
                 <tr className="hover:bg-gray-50">
                   <td className="font-medium text-xs sm:text-sm">Products</td>
-                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
-                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
-                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
-                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
+                  <td className="text-center text-green-500 text-base sm:text-lg"><FiCheck className="inline w-5 h-5" /></td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500"><FiCheck className="inline w-5 h-5" /></span> : <span className="text-red-500"><FiX className="inline w-5 h-5" /></span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500"><FiCheck className="inline w-5 h-5" /></span> : <span className="text-red-500"><FiX className="inline w-5 h-5" /></span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500"><FiCheck className="inline w-5 h-5" /></span> : <span className="text-red-500"><FiX className="inline w-5 h-5" /></span>}</td>
                 </tr>
                 <tr className="hover:bg-gray-50 bg-gray-100">
                   <td className="font-medium text-xs sm:text-sm">Categories</td>
-                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
-                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
-                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
-                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
+                  <td className="text-center text-green-500 text-base sm:text-lg"><FiCheck className="inline w-5 h-5" /></td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500"><FiCheck className="inline w-5 h-5" /></span> : <span className="text-red-500"><FiX className="inline w-5 h-5" /></span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500"><FiCheck className="inline w-5 h-5" /></span> : <span className="text-red-500"><FiX className="inline w-5 h-5" /></span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500"><FiCheck className="inline w-5 h-5" /></span> : <span className="text-red-500"><FiX className="inline w-5 h-5" /></span>}</td>
                 </tr>
                 <tr className="hover:bg-gray-50">
                   <td className="font-medium text-xs sm:text-sm">Stock</td>
-                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
-                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
-                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
-                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
+                  <td className="text-center text-green-500 text-base sm:text-lg"><FiCheck className="inline w-5 h-5" /></td>
+                  <td className="text-center text-green-500 text-base sm:text-lg"><FiCheck className="inline w-5 h-5" /></td>
+                  <td className="text-center text-green-500 text-base sm:text-lg"><FiCheck className="inline w-5 h-5" /></td>
+                  <td className="text-center text-green-500 text-base sm:text-lg"><FiCheck className="inline w-5 h-5" /></td>
                 </tr>
                 {/* ===================== Discount - SUPER_ADMIN = All ❌ ===================== */}
                 <tr className="hover:bg-gray-50 bg-gray-100">
                   <td className="font-medium text-xs sm:text-sm">Discounts</td>
-                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text-green-500">✅</span>}</td>
-                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text-green-500">✅</span>}</td>
-                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text_green-500">✅</span>}</td>
-                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-red-500">❌</span> : <span className="text-red-500">❌</span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-red-500"><FiX className="inline w-5 h-5" /></span> : <span className="text-green-500"><FiCheck className="inline w-5 h-5" /></span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-red-500"><FiX className="inline w-5 h-5" /></span> : <span className="text-green-500"><FiCheck className="inline w-5 h-5" /></span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-red-500"><FiX className="inline w-5 h-5" /></span> : <span className="text-green-500"><FiCheck className="inline w-5 h-5" /></span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-red-500"><FiX className="inline w-5 h-5" /></span> : <span className="text-red-500"><FiX className="inline w-5 h-5" /></span>}</td>
                 </tr>
                 {/* ============================================================================ */}
                 <tr className="hover:bg-gray-50">
@@ -253,7 +267,7 @@ export default function DashboardPage() {
                     Sales Report
                     {!isSuperAdmin && <span className="ml-2 text-xs text-gray-500">(Own Store)</span>}
                   </td>
-                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
+                  <td className="text-center text-green-500 text-base sm:text-lg"><FiCheck className="inline w-5 h-5" /></td>
                   <td className="text-center text-gray-400">-</td>
                   <td className="text-center text-gray-400">-</td>
                   <td className="text-center text-gray-400">-</td>
@@ -263,17 +277,17 @@ export default function DashboardPage() {
                     Stock Report
                     {!isSuperAdmin && <span className="ml-2 text-xs text-gray-500">(Own Store)</span>}
                   </td>
-                  <td className="text-center text-green-500 text-base sm:text-lg">✅</td>
+                  <td className="text-center text-green-500 text-base sm:text-lg"><FiCheck className="inline w-5 h-5" /></td>
                   <td className="text-center text-gray-400">-</td>
                   <td className="text-center text-gray-400">-</td>
                   <td className="text-center text-gray-400">-</td>
                 </tr>
                 <tr className="hover:bg-gray-50">
                   <td className="font-medium text-xs sm:text-sm">User Management</td>
-                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
-                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
-                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
-                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500">✅</span> : <span className="text-red-500">❌</span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500"><FiCheck className="inline w-5 h-5" /></span> : <span className="text-red-500"><FiX className="inline w-5 h-5" /></span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500"><FiCheck className="inline w-5 h-5" /></span> : <span className="text-red-500"><FiX className="inline w-5 h-5" /></span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500"><FiCheck className="inline w-5 h-5" /></span> : <span className="text-red-500"><FiX className="inline w-5 h-5" /></span>}</td>
+                  <td className="text-center text-base sm:text-lg">{isSuperAdmin ? <span className="text-green-500"><FiCheck className="inline w-5 h-5" /></span> : <span className="text-red-500"><FiX className="inline w-5 h-5" /></span>}</td>
                 </tr>
               </tbody>
             </table>

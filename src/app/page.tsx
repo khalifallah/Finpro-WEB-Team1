@@ -5,6 +5,7 @@ import { axiosInstance } from "@/libs/axios/axios.config";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import ProductList from "@/components/ProductList";
+import Pagination from "@/components/common/Pagination";
 import Footer from "@/components/Footer";
 import LocationPermissionModal from "@/components/LocationPermissionModal";
 import { useToast } from "@/contexts/ToastContext";
@@ -18,12 +19,16 @@ export default function Home() {
   const [homepageData, setHomepageData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize] = useState<number>(10);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
   const [selectedStore, setSelectedStore] = useState<any>(null);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
@@ -47,7 +52,7 @@ export default function Home() {
   }, [homepageData]);
 
   useEffect(() => {
-    fetchHomepageData();
+    fetchHomepageData(undefined, undefined, undefined, 1, pageSize);
   }, []);
 
   useEffect(() => {
@@ -81,7 +86,8 @@ export default function Home() {
 
     // 3. Refresh keranjang (siapa tahu user punya barang di toko ini sebelumnya)
     await refreshCart();
-    fetchHomepageData(undefined, undefined, store.id);
+    setCurrentPage(1);
+    fetchHomepageData(undefined, undefined, store.id, 1, pageSize);
 
     // 4. Tutup Modal
     setShowLocationModal(false);
@@ -120,7 +126,10 @@ export default function Home() {
   const fetchHomepageData = async (
     latitude?: number,
     longitude?: number,
-    storeIdOverride?: number
+    storeIdOverride?: number,
+    page?: number,
+    limit?: number,
+    categoryId?: number | null
   ) => {
     setLoading(true);
     setError(null);
@@ -128,13 +137,16 @@ export default function Home() {
     try {
       console.log("Fetching homepage data...");
 
-      const params: any = {};
+      const params: any = { page: page || currentPage || 1, limit: limit || pageSize };
 
       if (storeIdOverride) {
         params.storeId = storeIdOverride;
       } else if (latitude && longitude) {
         params.lat = latitude;
         params.lng = longitude;
+      }
+      if (typeof categoryId === 'number') {
+        params.category = categoryId;
       }
 
       console.log("Request params:", params);
@@ -193,6 +205,10 @@ export default function Home() {
                   };
                 });
             }
+
+            // update current page if backend provided pagination
+            const pagination = homepageData?.productList?.pagination;
+            if (pagination && pagination.page) setCurrentPage(pagination.page);
 
             setHomepageData(homepageData);
             return; // success, exit the function
@@ -285,6 +301,19 @@ export default function Home() {
     }
   };
 
+  const handleCategorySelect = (categoryId: number) => {
+    setSelectedCategory(categoryId);
+    setCurrentPage(1);
+    const sid = selectedStore?.id || (localStorage.getItem("storeId") ? Number(localStorage.getItem("storeId")) : undefined);
+    fetchHomepageData(undefined, undefined, sid, 1, pageSize, categoryId);
+  };
+
+  const handleSearch = (query?: string) => {
+    // minimal client-side filtering: set search query and reset page
+    setSearchQuery(query ? query : null);
+    setCurrentPage(1);
+  };
+
   // Check for location permission on component mount
   useEffect(() => {
     // Check if we have previously stored location
@@ -325,6 +354,13 @@ export default function Home() {
     fetchHomepageData();
     const newStore = { id: storeId, name: "Store...", address: "..." };
     setSelectedStore(newStore);
+  };
+
+  // Page change handler: preserve selected store when requesting new page
+  const handlePageChange = (p: number) => {
+    setCurrentPage(p);
+    const sid = selectedStore?.id || (localStorage.getItem("storeId") ? Number(localStorage.getItem("storeId")) : undefined);
+    fetchHomepageData(undefined, undefined, sid, p, pageSize);
   };
 
   if (loading && !homepageData) {
@@ -433,6 +469,8 @@ export default function Home() {
         selectedStore={selectedStore}
         onStoreChange={handleStoreChange}
         onLocationRequest={() => setShowLocationModal(true)}
+        onCategorySelect={handleCategorySelect}
+        onSearch={handleSearch}
       />
 
       {/* Main Content */}
@@ -476,11 +514,25 @@ export default function Home() {
 
         {/* Product List */}
         <ProductList
-          products={homepageData?.productList.products || []}
+          products={
+            searchQuery && homepageData?.productList?.products
+              ? homepageData.productList.products.filter((p: any) =>
+                  p.name?.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+              : homepageData?.productList.products || []
+          }
           pagination={homepageData?.productList.pagination}
           loading={loading}
           onAddToCart={handleAddToCart}
         />
+        <div className="mx-4">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={homepageData?.productList?.pagination?.totalPages || 1}
+            onPageChange={handlePageChange}
+            showInfo={true}
+          />
+        </div>
       </main>
 
       {/* Footer */}
