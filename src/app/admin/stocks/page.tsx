@@ -10,7 +10,7 @@ import StockUpdateModal from '@/components/admin/StockUpdateModal';
 import StockJournalModal from '@/components/admin/StockJournalModal';
 import StockCreateModal from '@/components/admin/StockCreateModal';
 import { useAuth } from '@/contexts/AuthContext';
-import { FiPlus, FiShoppingBag, FiAlertTriangle } from 'react-icons/fi';
+import { FiPlus, FiShoppingBag, FiAlertTriangle, FiPackage } from 'react-icons/fi';
 
 interface Stock {
   id: number;
@@ -401,7 +401,9 @@ export default function StocksPage() {
       {/* Page Header - ✅ RESPONSIVE */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Stock Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            <span className="inline-flex items-center gap-2"><FiPackage className="h-6 w-6 text-gray-700" />Stock Management</span>
+          </h1>
           <p className="text-gray-600 mt-1">
             {isSuperAdmin
               ? 'Manage inventory across all stores'

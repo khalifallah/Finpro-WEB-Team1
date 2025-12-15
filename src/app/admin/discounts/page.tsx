@@ -377,7 +377,9 @@ export default function DiscountsPage() {
       {/* Header - ✅ RESPONSIVE */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Discount Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            <span className="inline-flex items-center gap-2"><FiPercent className="h-5 w-5 text-gray-700" />Discount Management</span>
+          </h1>
           <p className="text-gray-600 mt-1">
             {isSuperAdmin ? 'Manage discounts across all stores' : `Managing: ${userStoreName}`}
           </p>
