@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react"; // Add useEffect
+import { useState, useEffect } from "react";
 import { axiosInstance } from "@/libs/axios/axios.config";
 import {
   CreateAddressData,
@@ -38,7 +38,7 @@ export default function AddressForm({
   useEffect(() => {
     // Prevent background scrolling when modal is open
     document.body.style.overflow = "hidden";
-    
+
     return () => {
       document.body.style.overflow = "auto";
     };
@@ -156,9 +156,13 @@ export default function AddressForm({
 
       onSuccess();
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || "Failed to save address";
+      const errorMessage =
+        err.response?.data?.message || "Failed to save address";
       setError(errorMessage);
-       showToast(err.response?.data?.message || "Failed to add address", "error");
+      showToast(
+        err.response?.data?.message || "Failed to add address",
+        "error"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -166,7 +170,7 @@ export default function AddressForm({
 
   return (
     <div className="modal modal-open">
-      <div className="modal-box max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="modal-box max-w-2xl max-h-[90vh] overflow-y-auto relative z-50">
         <h3 className="font-bold text-lg mb-4">
           {address ? "Edit Address" : "Add New Address"}
         </h3>
@@ -386,7 +390,7 @@ export default function AddressForm({
           </div>
         </form>
       </div>
-      
+
       {/* Backdrop */}
       <div className="modal-backdrop" onClick={onCancel}></div>
     </div>

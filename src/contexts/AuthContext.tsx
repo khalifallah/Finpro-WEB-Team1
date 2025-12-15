@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { axiosInstance } from "@/libs/axios/axios.config";
 
@@ -15,11 +21,25 @@ export interface User {
   fullName: string;
   email: string;
   photoUrl?: string;
-  role?: 'SUPER_ADMIN' | 'STORE_ADMIN' | 'USER';  // Updated: Type yang lebih specific (Gerald)
-  store?: Store;  // Updated: Store untuk Store Admin (Gerald)
+  role?: "SUPER_ADMIN" | "STORE_ADMIN" | "USER";
+  store?: Store;
   emailVerifiedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  referralCode?: string;
+  vouchers?: Voucher[];
+}
+
+export interface Voucher {
+  id: number;
+  code: string;
+  description: string;
+  type: string;
+  value: number;
+  minPurchaseAmount?: number;
+  maxDiscountAmount?: number;
+  expiresAt: string;
+  is_active: boolean;
 }
 
 interface AuthContextType {
@@ -32,12 +52,13 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<void>;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
+  refreshUserData: () => Promise<void>; // [BARU] Fungsi untuk memaksa refresh data
 }
 
 interface RegisterData {
   fullName: string;
   email: string;
-  role?: string; // Add this
+  role?: string;
   referredBy?: string;
 }
 
@@ -62,36 +83,70 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const router = useRouter();
   const pathname = usePathname();
 
+  // [BARU] Fungsi untuk mengambil data user terbaru dari backend
+  const refreshUserData = async () => {
+    try {
+      const currentToken = localStorage.getItem("token");
+      if (!currentToken) return;
+
+      const response = await axiosInstance.get("/auth/me");
+      const freshUser = response.data.data.user;
+
+      if (freshUser) {
+        setUser(freshUser);
+        // Penting: Update localStorage agar sinkron jika internet mati/refresh cepat
+        localStorage.setItem("user", JSON.stringify(freshUser));
+      }
+    } catch (error) {
+      console.error("Failed to refresh user data:", error);
+      // Opsional: Jika token expired, bisa logout otomatis di sini
+    }
+  };
+
   // Check for token in localStorage on initial load
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
+    const initAuth = async () => {
+      const storedToken = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      // Set the default Authorization header for axios
-      axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
-    }
+      if (storedToken) {
+        setToken(storedToken);
+        axiosInstance.defaults.headers.common[
+          "Authorization"
+        ] = `Bearer ${storedToken}`;
 
-    setIsLoading(false);
+        // 1. Set data dari localStorage dulu (agar UI cepat muncul)
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+
+        // 2. Ambil data terbaru dari server (background update)
+        await refreshUserData();
+      }
+
+      setIsLoading(false);
+    };
+
+    initAuth();
   }, []);
 
   // Function to handle login
   const login = async (email: string, password: string) => {
     try {
-      const response = await axiosInstance.post("/auth/login", { email, password });
+      const response = await axiosInstance.post("/auth/login", {
+        email,
+        password,
+      });
       const { token, user } = response.data.data;
-      
+
       setToken(token);
       setUser(user);
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
-      axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      
-      // Sync verification status
-      await syncVerificationStatus(user.id);
-      
+      axiosInstance.defaults.headers.common[
+        "Authorization"
+      ] = `Bearer ${token}`;
+
       const redirectPath = localStorage.getItem("redirectAfterLogin") || "/";
       localStorage.removeItem("redirectAfterLogin");
       router.push(redirectPath);
@@ -104,51 +159,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Function to handle Google login
   const googleLogin = async (idToken: string) => {
     try {
-      const response = await axiosInstance.post("/auth/google", { 
-        idToken 
+      const response = await axiosInstance.post("/auth/google", {
+        idToken,
       });
-      
+
       const { token, user } = response.data.data;
-      
-      // Ensure emailVerifiedAt is included
-      if (!user.emailVerifiedAt) {
-        console.warn("Google login: emailVerifiedAt not included in response");
-      }
-      
+
       setToken(token);
       setUser(user);
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
-      axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      
-      // Sync verification status with backend
-      await syncVerificationStatus(user.id);
-      
+      axiosInstance.defaults.headers.common[
+        "Authorization"
+      ] = `Bearer ${token}`;
+
       const redirectPath = localStorage.getItem("redirectAfterLogin") || "/";
       localStorage.removeItem("redirectAfterLogin");
       router.push(redirectPath);
     } catch (error: any) {
       console.error("Google login failed:", error);
       throw error;
-    }
-  };
-
-  // Function to sync verification status
-  const syncVerificationStatus = async (userId: string) => {
-    try {
-      const response = await axiosInstance.get(`/auth/verification-status`);
-      const backendUser = response.data.data.user;
-      
-      // If backend has different verification status, update frontend
-      if (backendUser.emailVerifiedAt) {
-        setUser(prev => prev ? { ...prev, emailVerifiedAt: backendUser.emailVerifiedAt } : null);
-        localStorage.setItem("user", JSON.stringify({
-          ...JSON.parse(localStorage.getItem("user") || "{}"),
-          emailVerifiedAt: backendUser.emailVerifiedAt
-        }));
-      }
-    } catch (error) {
-      console.error("Failed to sync verification status:", error);
     }
   };
 
@@ -163,49 +193,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Function to handle registration
-const register = async (data: RegisterData) => {
-  try {
-    const response = await axiosInstance.post("/auth/register", data);
-    // Registration successful, email verification sent
-    router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
-  } catch (error) {
-    console.error("Registration failed:", error);
-    throw error;
-  }
-};
+  const register = async (data: RegisterData) => {
+    try {
+      const response = await axiosInstance.post("/auth/register", data);
+      router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+    } catch (error) {
+      console.error("Registration failed:", error);
+      throw error;
+    }
+  };
 
-  // Function to check if user is authenticated
   const isAuthenticated = !!user;
-  
-  // Function to check if user is verified
-  const isVerified = !!user?.emailVerifiedAt;
 
   // Effect to handle protected routes
   useEffect(() => {
     if (isLoading) return;
 
-    const publicPaths = ["/", "/login", "/register", "/reset-password", "/reset-password/confirm", "/verify-email"];
-    const isPublicPath = publicPaths.includes(pathname) || pathname.startsWith("/products");
+    const publicPaths = [
+      "/",
+      "/login",
+      "/register",
+      "/reset-password",
+      "/reset-password/confirm",
+      "/verify-email",
+    ];
+    const isPublicPath =
+      publicPaths.includes(pathname) || pathname.startsWith("/products");
 
     if (!isAuthenticated && !isPublicPath) {
-      // Store the current path for redirect after login
       localStorage.setItem("redirectAfterLogin", pathname);
       router.push("/login");
     }
   }, [isAuthenticated, isLoading, pathname, router]);
-  
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      token, 
-      isLoading, 
-      login, 
-      googleLogin, 
-      logout, 
-      register,
-      setUser, 
-      setToken 
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        isLoading,
+        login,
+        googleLogin,
+        logout,
+        register,
+        setUser,
+        setToken,
+        refreshUserData,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

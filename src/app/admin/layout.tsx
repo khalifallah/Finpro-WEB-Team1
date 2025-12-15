@@ -21,13 +21,28 @@ const MENU_ITEMS: MenuItem[] = [
   { label: "Products", href: "/admin/products", icon: "products" },
   { label: "Categories", href: "/admin/categories", icon: "categories" },
   { label: "Stocks", href: "/admin/stocks", icon: "stocks" },
-  { label: "Discounts", href: "/admin/discounts", icon: "discounts", adminOnly: "STORE_ADMIN" }, // ✅ ONLY for STORE_ADMIN
+  {
+    label: "Discounts",
+    href: "/admin/discounts",
+    icon: "discounts",
+    adminOnly: "STORE_ADMIN",
+  },
   { label: "Reports", href: "/admin/reports", icon: "reports" },
-  { label: "Users", href: "/admin/users", icon: "users", adminOnly: "SUPER_ADMIN" },
-  { label: "Stores", href: "/admin/stores", icon: "stores", adminOnly: "SUPER_ADMIN" }
+  {
+    label: "Users",
+    href: "/admin/users",
+    icon: "users",
+    adminOnly: "SUPER_ADMIN",
+  },
+  {
+    label: "Stores",
+    href: "/admin/stores",
+    icon: "stores",
+    adminOnly: "SUPER_ADMIN",
+  },
 ];
 
-// Icon component
+// Icon component (No changes here, kept for completeness)
 const MenuIcon = ({
   name,
   className = "w-5 h-5",
@@ -198,7 +213,7 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthenticated, role, loading } = useAuth(); // Added 'loading' if available in your hook, otherwise rely on mounted
 
   const [mounted, setMounted] = useState(false);
   const [userEmail, setUserEmail] = useState("admin");
@@ -210,6 +225,15 @@ export default function AdminLayout({
     if (storedEmail) setUserEmail(storedEmail);
   }, []);
 
+  // REDIRECT LOGIC FOR REGULAR USERS
+  useEffect(() => {
+    if (mounted && isAuthenticated) {
+      if (role !== "SUPER_ADMIN" && role !== "STORE_ADMIN") {
+        router.replace("/"); // Redirect regular users to home
+      }
+    }
+  }, [mounted, isAuthenticated, role, router]);
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userEmail");
@@ -220,8 +244,8 @@ export default function AdminLayout({
   const isActive = (href: string) => pathname?.startsWith(href);
   const userInitial = userEmail.charAt(0).toUpperCase();
 
-  // Loading state
-  if (!mounted) {
+  // 1. Loading State (Wait for client hydration)
+  if (!mounted || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <span className="loading loading-spinner loading-lg text-primary"></span>
@@ -229,7 +253,7 @@ export default function AdminLayout({
     );
   }
 
-  // Auth check
+  // 2. Auth Check (Not Logged In)
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white">
@@ -244,6 +268,17 @@ export default function AdminLayout({
     );
   }
 
+  // 3. Role Check (Logged In but NOT Admin)
+  if (role !== "SUPER_ADMIN" && role !== "STORE_ADMIN") {
+    // Return nothing or a spinner while the useEffect redirects them
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <span className="loading loading-spinner loading-lg text-primary"></span>
+      </div>
+    );
+  }
+
+  // 4. Authorized Admin -> Render Dashboard
   return (
     <div className="min-h-screen flex bg-gray-100">
       {/* Mobile Overlay */}
@@ -283,16 +318,14 @@ export default function AdminLayout({
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {MENU_ITEMS.map((item) => {
-            // ===================== PERMISSION CHECK =====================
-            // ✅ Check if menu has adminOnly restriction
+            // Permission Check for menu items
             if (item.adminOnly === "SUPER_ADMIN" && role !== "SUPER_ADMIN") {
-              return null; // Hide for STORE_ADMIN
+              return null;
             }
             if (item.adminOnly === "STORE_ADMIN" && role === "SUPER_ADMIN") {
-              return null; // ✅ Hide Discounts for SUPER_ADMIN
+              return null;
             }
-            // ============================================================
-            
+
             return (
               <Link
                 key={item.href}

@@ -2,7 +2,7 @@ export interface UserResponse {
   id: number;
   email: string;
   fullName: string;
-  role: 'SUPER_ADMIN' | 'STORE_ADMIN' | 'USER';
+  role: "SUPER_ADMIN" | "STORE_ADMIN" | "USER";
   storeId?: number;
   store?: {
     id: number;
@@ -19,7 +19,7 @@ export interface CreateUserRequest {
   email: string;
   fullName: string;
   password: string;
-  role: 'STORE_ADMIN';
+  role: "STORE_ADMIN";
   storeId: number;
 }
 

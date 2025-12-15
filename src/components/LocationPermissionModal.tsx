@@ -66,6 +66,7 @@ const LocationPermissionModal: React.FC<LocationPermissionModalProps> = ({
 
       // Auto-select toko pertama jika ada
       if (formattedStores.length > 0) {
+        setSelectedStore(formattedStores[0]); // FIX: Auto select the first store
       }
     } catch (error) {
       console.error("Failed to fetch stores:", error);
@@ -147,7 +148,7 @@ const LocationPermissionModal: React.FC<LocationPermissionModalProps> = ({
                     <input
                       type="radio"
                       name="store"
-                      checked={selectedStore?.distance === store.id}
+                      checked={selectedStore?.id === store.id}
                       onChange={() => handleSelect(store)}
                       className="radio radio-primary"
                     />
