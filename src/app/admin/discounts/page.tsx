@@ -92,17 +92,18 @@ export default function DiscountsPage() {
     } catch (e) { console.error('Failed to fetch products:', e); }
   }, [getAuthHeaders]);
 
-  const fetchDiscounts = useCallback(async (page: number = 1) => {
+  const fetchDiscounts = useCallback(async (page: number = 1, searchOverride?: string) => {
     try {
       setLoading(true);
       const params = new URLSearchParams({ page: String(page), limit: String(pagination.limit) });
       const storeIdToUse = isSuperAdmin ? selectedStore : userStoreId;
       if (storeIdToUse) params.append('storeId', String(storeIdToUse));
       let usedProductFilter = false;
-      if (query) {
+      const effectiveQuery = typeof searchOverride === 'string' ? searchOverride : query;
+      if (effectiveQuery) {
         // Try resolving text -> productId (backend filters discounts by productId)
         try {
-          const pRes = await fetch(`${getApiUrl()}/products?limit=5&search=${encodeURIComponent(query.trim())}`, { headers: getAuthHeaders() });
+          const pRes = await fetch(`${getApiUrl()}/products?limit=5&search=${encodeURIComponent(effectiveQuery.trim())}`, { headers: getAuthHeaders() });
           if (pRes.ok) {
             const pData = await pRes.json();
             const productsList = pData.products || pData.data?.products || pData || [];
@@ -127,8 +128,9 @@ export default function DiscountsPage() {
       // If user searched but we didn't map to a productId, perform client-side filter by discount description or product name
       let finalList = discountsList;
       let finalTotal = totalCount;
-      if (query && !usedProductFilter) {
-        const q = query.trim().toLowerCase();
+      const effectiveQuery2 = typeof searchOverride === 'string' ? searchOverride : query;
+      if (effectiveQuery2 && !usedProductFilter) {
+        const q = effectiveQuery2.trim().toLowerCase();
         finalList = discountsList.filter(d =>
           (d.description && d.description.toLowerCase().includes(q)) ||
           (d.product && d.product.name && d.product.name.toLowerCase().includes(q))
@@ -390,7 +392,7 @@ export default function DiscountsPage() {
       </div>
 
       <div className="mt-4 max-w-xl">
-        <SearchBar value={query} onChange={setQuery} placeholder="Search discounts..." />
+        <SearchBar value={query} onChange={handleSearch} placeholder="Search discounts..." />
       </div>
 
       {/* Store Filter (Super Admin) - ✅ RESPONSIVE */}
