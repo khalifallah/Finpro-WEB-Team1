@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import ReportTable, { ReportTableColumn } from '@/components/admin/reports/ReportTable';
 import Pagination from '@/components/common/Pagination';
 import { useAuth } from '@/contexts/AuthContext';
+import { FiBarChart2, FiDollarSign, FiPackage, FiShoppingBag, FiAlertTriangle, FiCalendar, FiTag, FiClipboard, FiFileText, FiMapPin } from 'react-icons/fi';
 import {
   MonthlySalesReport,
   SalesByCategoryReport,
@@ -158,7 +159,7 @@ export default function ReportsPage() {
       if (values.length > 0) return values[0];
     }
 
-    console.warn('⚠️ Could not parse response:', data);
+    console.warn('Could not parse response:', data);
     return [];
   }, []);
 
@@ -194,7 +195,7 @@ export default function ReportsPage() {
 
       setStores(storesList);
     } catch (error: any) {
-      console.error('❌ Error fetching stores:', error);
+      console.error('Error fetching stores:', error);
       setStoresError(error.message || 'Failed to load stores');
       setStores([]);
     }
@@ -238,7 +239,7 @@ export default function ReportsPage() {
         const parsed = parseReportData(data);
         setter(parsed);
       } catch (error) {
-        console.error(`❌ Error on ${endpoint}:`, error);
+        console.error(`Error on ${endpoint}:`, error);
         setter([]);
       } finally {
         setLoading(false);
@@ -433,7 +434,9 @@ export default function ReportsPage() {
     <div className="space-y-6">
       {/* Header - ✅ RESPONSIVE */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">📊 Reports & Analysis</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+          <span className="inline-flex items-center gap-2"><FiBarChart2 className="h-6 w-6 text-gray-700" />Reports & Analysis</span>
+        </h1>
         <p className="text-gray-600 mt-1">
           {isSuperAdmin ? 'View reports for all stores' : `View reports for ${user?.store?.name || 'your store'}`}
         </p>
@@ -443,11 +446,11 @@ export default function ReportsPage() {
       <div className="flex flex-wrap gap-2 sm:gap-3">
         <button onClick={() => setReportType('sales')}
           className={`px-3 py-2 sm:px-5 sm:py-3 rounded-lg font-semibold transition-all ${reportType === 'sales' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'}`}>
-          💰 Sales Report
+          <span className="inline-flex items-center gap-2"><FiDollarSign className="h-4 w-4" />Sales Report</span>
         </button>
         <button onClick={() => setReportType('stock')}
           className={`px-3 py-2 sm:px-5 sm:py-3 rounded-lg font-semibold transition-all ${reportType === 'stock' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'}`}>
-          📦 Stock Report
+          <span className="inline-flex items-center gap-2"><FiPackage className="h-4 w-4" />Stock Report</span>
         </button>
       </div>
 
@@ -466,8 +469,8 @@ export default function ReportsPage() {
 
             <div className="form-control w-full max-w-xs">
               <label className="label">
-                <span className="label-text font-semibold text-gray-900 bg-green-100 px-2 py-1 rounded-lg">
-                  🏪 Filter by Store <span className="text-red-500">*</span>
+                <span className="label-text font-semibold text-gray-900 bg-green-100 px-2 py-1 rounded-lg inline-flex items-center gap-2">
+                  <FiShoppingBag className="h-4 w-4 text-gray-700" /> Filter by Store <span className="text-red-500">*</span>
                 </span>
               </label>
               
@@ -495,8 +498,8 @@ export default function ReportsPage() {
 
               {!selectedStore && !storesError && stores.length > 0 && (
                 <label className="label pt-2">
-                  <span className="label-text-alt text-red-600 font-medium">
-                    ⚠️ You must select a store to view reports
+                  <span className="label-text-alt text-red-600 font-medium inline-flex items-center gap-2">
+                    <FiAlertTriangle className="h-4 w-4 text-red-600" /> You must select a store to view reports
                   </span>
                 </label>
               )}
@@ -517,7 +520,7 @@ export default function ReportsPage() {
         {/* ✅ IMPROVED Month & Year Filter */}
         <div className="form-control w-full max-w-md">
           <label className="label">
-            <span className="label-text font-semibold text-gray-900">📅 Select Month & Year</span>
+            <span className="label-text font-semibold text-gray-900 inline-flex items-center gap-2"><FiCalendar className="h-4 w-4" /> Select Month & Year</span>
           </label>
           
           <div className="flex gap-2">
@@ -550,8 +553,8 @@ export default function ReportsPage() {
 
           {/* Display Current Selection */}
           <label className="label pt-2">
-            <span className="label-text-alt text-blue-600 font-medium">
-              📌 Currently viewing: <strong>{monthOptions.find(m => m.value === selectedMonthNum)?.label} {selectedYear}</strong>
+            <span className="label-text-alt text-blue-600 font-medium inline-flex items-center gap-2">
+              <FiMapPin className="h-4 w-4" /> Currently viewing: <strong>{monthOptions.find(m => m.value === selectedMonthNum)?.label} {selectedYear}</strong>
             </span>
           </label>
         </div>
@@ -576,15 +579,15 @@ export default function ReportsPage() {
           <div className="flex flex-wrap gap-2 sm:gap-3 border-b">
             <button onClick={() => setSalesTab('monthly')}
               className={`px-3 py-2 sm:px-4 sm:py-3 font-semibold border-b-2 transition-all ${salesTab === 'monthly' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
-              📅 Monthly
+              <span className="inline-flex items-center gap-2"><FiCalendar className="h-4 w-4" />Monthly</span>
             </button>
             <button onClick={() => setSalesTab('byCategory')}
               className={`px-3 py-2 sm:px-4 sm:py-3 font-semibold border-b-2 transition-all ${salesTab === 'byCategory' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text_gray-900'}`}>
-              🏷️ By Category
+              <span className="inline-flex items-center gap-2"><FiTag className="h-4 w-4" />By Category</span>
             </button>
             <button onClick={() => setSalesTab('byProduct')}
               className={`px-3 py-2 sm:px-4 sm:py-3 font-semibold border-b-2 transition-all ${salesTab === 'byProduct' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
-              📦 By Product
+              <span className="inline-flex items-center gap-2"><FiPackage className="h-4 w-4" />By Product</span>
             </button>
           </div>
 
@@ -638,11 +641,11 @@ export default function ReportsPage() {
           <div className="flex flex-wrap gap-2 sm:gap-3 border-b">
             <button onClick={() => setStockTab('summary')}
               className={`px-3 py-2 sm:px-4 sm:py-3 font-semibold border-b-2 transition-all ${stockTab === 'summary' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
-              📋 Summary
+              <span className="inline-flex items-center gap-2"><FiClipboard className="h-4 w-4" />Summary</span>
             </button>
             <button onClick={() => setStockTab('detail')}
               className={`px-3 py-2 sm:px-4 sm:py-3 font-semibold border-b-2 transition-all ${stockTab === 'detail' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
-              📝 Detail History
+              <span className="inline-flex items-center gap-2"><FiFileText className="h-4 w-4" />Detail History</span>
             </button>
           </div>
 
