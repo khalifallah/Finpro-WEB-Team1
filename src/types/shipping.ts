@@ -21,6 +21,9 @@ export interface CheckoutPreview {
   nearestStore?: any;
   discountAmount?: number;
   requiresAddress: boolean;
+  totalDiscount?: number;
+  voucherDeduction?: number;
+  shippingDeduction?: number;
 }
 
 export interface CheckoutValidation {
@@ -31,4 +34,8 @@ export interface CheckoutValidation {
   distance: number;
   subtotal: number;
   availableShippingMethods: ShippingService[];
+  totalDiscount?: number;
+  voucherDeduction?: number;
+  shippingDeduction?: number;
+  finalTotal?: number;
 }

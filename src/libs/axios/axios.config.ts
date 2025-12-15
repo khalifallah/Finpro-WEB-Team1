@@ -9,7 +9,7 @@ const axiosInstance = axios.create({
     Accept: "application/json",
   },
   withCredentials: true,
-  timeout: 60000, // Increased from 30000
+  timeout: 60000,
   timeoutErrorMessage: "Request timeout. Backend might be starting up...",
 });
 
@@ -46,17 +46,19 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const config = error.config;
-    
+
     // Retry on timeout or network errors
     if (
-      (error.code === 'ECONNABORTED' || error.message.includes('timeout') || !error.response) &&
+      (error.code === "ECONNABORTED" ||
+        error.message.includes("timeout") ||
+        !error.response) &&
       !config._retry
     ) {
       config._retry = true;
-      
+
       // Wait 2 seconds before retrying
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       console.log(`Retrying request to ${config.url}`);
       return axiosInstance(config);
     }
