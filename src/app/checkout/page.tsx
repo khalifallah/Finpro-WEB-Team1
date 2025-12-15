@@ -13,162 +13,130 @@ import {
   CheckoutPreview,
   CheckoutValidation,
 } from "@/types/shipping";
+import { useToast } from "@/contexts/ToastContext";
+import { voucherService, Voucher } from "@/services/voucher.service";
 
 export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const { showToast } = useToast();
+
   const [loading, setLoading] = useState(true);
   const [checkoutPreview, setCheckoutPreview] =
     useState<CheckoutPreview | null>(null);
+
+  // State Data
   const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(
     null
   );
   const [selectedShipping, setSelectedShipping] =
     useState<ShippingService | null>(null);
+  const [validationResult, setValidationResult] =
+    useState<CheckoutValidation | null>(null);
+
+  // State UI
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [showAddressList, setShowAddressList] = useState(false);
   const [error, setError] = useState("");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const [validationResult, setValidationResult] =
-    useState<CheckoutValidation | null>(null);
-  
+  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
+
+  // State Voucher
+  const [voucherCode, setVoucherCode] = useState("");
+  const [appliedVoucherCode, setAppliedVoucherCode] = useState("");
+  const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
+  const [myVouchers, setMyVouchers] = useState<Voucher[]>([]);
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
 
   const storeIdParam = searchParams.get("storeId");
   const itemsParam = searchParams.get("items");
-
   const storeId = storeIdParam ? Number(storeIdParam) : null;
   const cartItemIds = itemsParam ? JSON.parse(itemsParam) : [];
 
   useEffect(() => {
     if (user) {
       fetchCheckoutPreview();
+      fetchMyVouchers();
     }
   }, [user]);
 
-  const fetchCheckoutPreview = async () => {
+  const fetchMyVouchers = async () => {
+    const vouchers = await voucherService.getMyVouchers();
+    setMyVouchers(vouchers);
+  };
+
+  const fetchCheckoutPreview = async (codeToApply?: string) => {
     try {
       setLoading(true);
       setError("");
-
-      // Get token from localStorage
       const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
+      if (!token) throw new Error("No authentication token found");
 
-      // *** FIX: Pass storeId to checkout preview ***
+      const code = codeToApply !== undefined ? codeToApply : appliedVoucherCode;
+
       const response = await axiosInstance.get("/orders/checkout/preview", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         params: {
-          storeId: storeId, // Pass storeId from URL
+          storeId: storeId,
+          voucherCode: code || undefined,
+          addressId: selectedAddress?.id,
         },
       });
 
       if (response.data.status === 200 || response.data.status === "success") {
         const previewData = response.data.data.preview;
-
-        // Check if canCheckout is false
         if (!previewData.canCheckout) {
-          setError(
-            "Cannot proceed to checkout. Your cart may be empty or there are issues with your order."
-          );
-          // Don't set checkoutPreview if can't checkout
+          setError("Cannot proceed to checkout. Your cart may be empty.");
           return;
         }
-
         setCheckoutPreview(previewData);
 
-        // Backend should provide numeric discount fields (`discountAmount` on items and `discountAmount` on preview).
-        // No client-side fetch to admin endpoints is performed here.
-
-        // Set selected address if available
-        if (previewData.selectedAddress) {
+        if (previewData.selectedAddress && !selectedAddress) {
           setSelectedAddress(previewData.selectedAddress);
         }
-
-        // *** FIX: Auto-select shipping method if available ***
-        if (previewData.shippingOptions?.length > 0) {
-          setSelectedShipping(previewData.shippingOptions[0]);
-
-          // Trigger validation if address exists
-          if (previewData.selectedAddress) {
-            handleAddressSelect(previewData.selectedAddress);
-          }
-        }
-      } else {
-        throw new Error(
-          response.data.message || "Failed to load checkout preview"
-        );
       }
     } catch (err: any) {
-      console.error("Fetch checkout preview error:", err);
-
-      // Handle specific errors
+      if (codeToApply) {
+        showToast(
+          err.response?.data?.message || "Invalid voucher code",
+          "error"
+        );
+        setAppliedVoucherCode("");
+        setVoucherCode("");
+      }
       if (err.response?.status === 401) {
         setError("Your session has expired. Please log in again.");
-        // Redirect to login after 2 seconds
         setTimeout(() => router.push("/login"), 2000);
-      } else if (err.response?.status === 400) {
-        setError(
-          err.response?.data?.message ||
-            "Cannot checkout. Please check your cart items."
-        );
       } else {
         setError(err.message || "Failed to load checkout");
       }
-
-      // Reset cart state on error
-      setCheckoutPreview({
-        canCheckout: false,
-        addresses: [],
-        cartSummary: [],
-        subtotal: 0,
-        totalWeight: 0,
-        shippingOptions: [],
-        requiresAddress: true,
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 2;
-
-  const fetchCheckoutPreviewWithRetry = async () => {
-    try {
-      await fetchCheckoutPreview();
-      setRetryCount(0); // Reset retry count on success
-    } catch (error) {
-      if (retryCount < maxRetries) {
-        setRetryCount((prev) => prev + 1);
-        setTimeout(() => {
-          fetchCheckoutPreviewWithRetry();
-        }, 1000 * retryCount); // Exponential backoff
-      }
-    }
-  };
-
-  // Update useEffect to use the retry version
-  useEffect(() => {
-    if (user) {
-      fetchCheckoutPreviewWithRetry();
-    }
-  }, [user]);
-
   const handleAddressSelect = async (address: UserAddress) => {
     setSelectedAddress(address);
+    setSelectedShipping(null);
+    setValidationResult(null);
     setShowAddressList(false);
+  };
+
+  const handleCalculateShipping = async () => {
+    if (!selectedAddress) {
+      setError("Please select a shipping address first.");
+      return;
+    }
 
     try {
-      // First, get available shipping methods
+      setIsCalculatingShipping(true);
+      setError("");
+
       const shippingResponse = await axiosInstance.post(
         "/orders/shipping/calculate",
         {
-          addressId: address.id,
+          addressId: selectedAddress.id,
           weight: checkoutPreview?.totalWeight || 1000,
           storeId: storeId,
         }
@@ -176,67 +144,139 @@ export default function CheckoutPage() {
 
       const shippingOptions = shippingResponse.data.data.shippingOptions;
 
+      setValidationResult({
+        ...validationResult,
+        distance: shippingResponse.data.data.distance,
+        availableShippingMethods: shippingOptions,
+      } as any);
+
       if (shippingOptions.length === 0) {
-        setError(
-          "No shipping methods available for this address. Please select a different address."
-        );
-        return;
+        setError("No shipping methods available for this location.");
       }
-
-      // Auto-select the first available shipping method
-      const firstShippingMethod = shippingOptions[0];
-      setSelectedShipping(firstShippingMethod);
-
-      // Then validate checkout with the actual shipping method
-      const response = await axiosInstance.post("/orders/checkout/validate", {
-        addressId: address.id,
-        shippingMethod: firstShippingMethod.serviceCode, // Use actual service code
-        storeId: storeId,
-      });
-
-      const validationData = response.data.data;
-      setValidationResult(validationData);
     } catch (err: any) {
-      console.error("Shipping validation error:", err);
-      setError(err.message || "Failed to calculate shipping");
+      console.error("Calculate shipping error:", err);
+      setError(
+        err.response?.data?.message || "Failed to calculate shipping costs"
+      );
+    } finally {
+      setIsCalculatingShipping(false);
     }
   };
+
+  async function handleShippingSelect(
+    shipping: ShippingService
+  ): Promise<void> {
+    try {
+      setSelectedShipping(shipping);
+      setError("");
+      if (!selectedAddress) {
+        setError("Please select a shipping address first.");
+        return;
+      }
+      await validateCheckoutStep(selectedAddress.id, shipping.serviceCode);
+    } catch (err: any) {
+      setError(
+        err.response?.data?.message || "Failed to validate shipping method"
+      );
+    }
+  }
+
+  // --- LOGIC VOUCHER ---
+
+  const handleApplyVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    setIsApplyingVoucher(true);
+    try {
+      await fetchCheckoutPreview(voucherCode);
+      if (selectedAddress && selectedShipping) {
+        await validateCheckoutStep(
+          selectedAddress.id,
+          selectedShipping.serviceCode,
+          voucherCode
+        );
+      }
+      setAppliedVoucherCode(voucherCode);
+      showToast("Voucher applied successfully!", "success");
+    } catch (error) {
+      setVoucherCode("");
+    } finally {
+      setIsApplyingVoucher(false);
+    }
+  };
+
+  const handleSelectVoucherFromList = async (code: string) => {
+    setVoucherCode(code);
+    setShowVoucherModal(false);
+    setIsApplyingVoucher(true);
+    try {
+      await fetchCheckoutPreview(code);
+      if (selectedAddress && selectedShipping) {
+        await validateCheckoutStep(
+          selectedAddress.id,
+          selectedShipping.serviceCode,
+          code
+        );
+      }
+      setAppliedVoucherCode(code);
+      showToast("Voucher applied successfully!", "success");
+    } finally {
+      setIsApplyingVoucher(false);
+    }
+  };
+
+  const handleRemoveVoucher = async () => {
+    setVoucherCode("");
+    setAppliedVoucherCode("");
+    await fetchCheckoutPreview("");
+    if (selectedAddress && selectedShipping) {
+      await validateCheckoutStep(
+        selectedAddress.id,
+        selectedShipping.serviceCode,
+        ""
+      );
+    } else {
+      await fetchCheckoutPreview("");
+    }
+    showToast("Voucher removed", "info");
+  };
+
+  const validateCheckoutStep = async (
+    addressId: number,
+    serviceCode: string,
+    voucherCodeOverride?: string
+  ) => {
+    const code =
+      voucherCodeOverride !== undefined
+        ? voucherCodeOverride
+        : appliedVoucherCode;
+
+    console.log("Validating checkout with voucher:", code);
+
+    const response = await axiosInstance.post("/orders/checkout/validate", {
+      addressId: addressId,
+      shippingMethod: serviceCode,
+      storeId: storeId,
+      voucherCode: code || undefined,
+    });
+
+    console.log("Validation Response:", response.data.data); // DEBUG: Cek console browser!
+    setValidationResult(response.data.data);
+  };
+
   const handlePlaceOrder = async () => {
     if (!selectedAddress || !selectedShipping) {
       setError("Please select address and shipping method");
       return;
     }
-
-    if (!storeId || cartItemIds.length === 0) {
-      setError("Invalid order data. Please return to cart.");
-      return;
-    }
-
     setIsPlacingOrder(true);
-    setError("");
-
     try {
-      // Check what shipping methods are available for this store
-      const availableMethods = validationResult?.availableShippingMethods || [];
-      const expressMethod = availableMethods.find(
-        (method) =>
-          method.serviceCode === "EXPRESS" ||
-          method.serviceCode === "NEXT_DAY" ||
-          method.serviceCode === "FAST_DELIVERY"
-      );
-
-      // If no express method, use the first available
-      const selectedMethod = expressMethod || availableMethods[0];
-
-      // Use the found method
       const response = await axiosInstance.post("/orders/create", {
         userAddressId: selectedAddress.id,
-        shippingMethod: selectedMethod.serviceCode, // Use actual code from store
+        shippingMethod: selectedShipping.serviceCode,
         storeId: storeId,
         cartItemIds: cartItemIds,
+        voucherCode: appliedVoucherCode || undefined,
       });
-
-      // Redirect to order confirmation page
       router.push(`/orders/${response.data.data.order.id}`);
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to place order");
@@ -249,38 +289,11 @@ export default function CheckoutPage() {
       style: "currency",
       currency: "IDR",
       minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(price);
   };
 
-  // Fallback: if backend didn't provide discountAmount, compute from cartSummary
-  const previewDiscount = (() => {
-    if (!checkoutPreview) return 0;
-    if (typeof checkoutPreview.discountAmount === "number") return checkoutPreview.discountAmount || 0;
-    // compute from cartSummary items
-    try {
-      return checkoutPreview.cartSummary.reduce((acc: number, item: any) => {
-        // prefer server-provided numeric discount per item if present
-        if (typeof item.discountAmount === "number") return acc + (item.discountAmount || 0);
-        if (!item.discount) return acc;
-        const rule = item.discount;
-        let itemDiscount = 0;
-        if (rule.type === "DIRECT_PERCENTAGE") {
-          itemDiscount = (item.total || 0) * (rule.value / 100 || 0);
-        } else if (rule.type === "DIRECT_NOMINAL") {
-          itemDiscount = Math.min(rule.value || 0, item.total || 0);
-        } else if (rule.type === "BOGO") {
-          if ((item.quantity || 0) >= 2) itemDiscount = item.price || 0;
-        }
-        return acc + itemDiscount;
-      }, 0);
-    } catch (e) {
-      return 0;
-    }
-  })();
-
-  const effectivePreviewDiscount = previewDiscount;
-
-  if (loading) {
+  if (loading && !checkoutPreview) {
     return (
       <AuthGuard requireAuth requireVerification={true}>
         <div className="min-h-screen flex items-center justify-center">
@@ -293,231 +306,122 @@ export default function CheckoutPage() {
   if (!checkoutPreview?.canCheckout) {
     return (
       <AuthGuard requireAuth requireVerification={true}>
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold mb-4">Checkout</h1>
-            <div className="alert alert-warning max-w-md mx-auto">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="stroke-current shrink-0 h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
-                />
-              </svg>
-              <div>
-                <span>Cannot proceed to checkout</span>
-                <p className="text-sm mt-1">
-                  Your cart may be empty or there are issues with your order.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-4 justify-center mt-6">
-              <button
-                className="btn btn-primary"
-                onClick={() => router.push("/cart")}
-              >
-                View Cart
-              </button>
-              <button
-                className="btn btn-outline"
-                onClick={() => {
-                  // Force refresh cart
-                  localStorage.removeItem("storeId");
-                  router.push("/");
-                }}
-              >
-                Start Over
-              </button>
-            </div>
-          </div>
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+          <h2 className="text-xl font-bold">Cannot Checkout</h2>
+          <button className="btn btn-primary" onClick={() => router.push("/")}>
+            Back to Home
+          </button>
         </div>
       </AuthGuard>
     );
   }
 
-  async function handleShippingSelect(
-    shipping: ShippingService
-  ): Promise<void> {
-    try {
-      setSelectedShipping(shipping);
-      setError("");
+  // === VARIABLE DISPLAY (FLEXIBLE) ===
+  const displaySubtotal =
+    validationResult?.subtotal || checkoutPreview.subtotal;
+  const displayShippingCost = selectedShipping?.cost || 0;
 
-      if (!selectedAddress) {
-        setError("Please select a shipping address first.");
-        return;
-      }
+  const displayStoreDiscount =
+    (validationResult as any)?.totalDiscount ||
+    (checkoutPreview as any).totalDiscount ||
+    0;
 
-      const response = await axiosInstance.post("/orders/checkout/validate", {
-        addressId: selectedAddress.id,
-        shippingMethod: shipping.serviceCode,
-        storeId: storeId,
-      });
+  const displayVoucherDeduction =
+    (validationResult as any)?.voucherDeduction ||
+    (validationResult as any)?.voucherAmount ||
+    (checkoutPreview as any).voucherDeduction ||
+    0;
 
-      const validationData: CheckoutValidation = response.data.data;
-      setValidationResult(validationData);
-    } catch (err: any) {
-      console.error("Shipping selection validation error:", err);
-      setError(
-        err.response?.data?.message || "Failed to validate shipping method"
-      );
-    }
-  }
+  const displayShippingDeduction =
+    (checkoutPreview as any)?.shippingDeduction ||
+    (validationResult as any)?.shippingDeduction ||
+    0;
 
-  const calculateShipping = async (): Promise<void> => {
-    try {
-      setError("");
-      if (!selectedAddress) {
-        setError("Please select a shipping address first.");
-        setShowAddressList(true);
-        return;
-      }
-      await handleAddressSelect(selectedAddress);
-    } catch (err: any) {
-      console.error("Calculate shipping error:", err);
-      setError(err.response?.data?.message || "Failed to calculate shipping");
-    }
-  };
+  const productTotal = Math.max(
+    0,
+    displaySubtotal - displayStoreDiscount - displayVoucherDeduction
+  );
+  const shippingTotal = Math.max(
+    0,
+    displayShippingCost - displayShippingDeduction
+  );
+
+  const displayFinalTotal = productTotal + shippingTotal;
 
   return (
     <AuthGuard requireAuth requireVerification={true}>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         <h1 className="text-3xl font-bold mb-8">Checkout</h1>
 
         {error && (
-          <div className="alert alert-error mb-6">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="stroke-current shrink-0 h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+          <div className="alert alert-error mb-6 shadow-sm">
             <span>{error}</span>
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Order Summary & Shipping */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Shipping Address Section */}
-            <div className="card bg-base-100 shadow-xl">
-              <div className="card-body">
-                <h2 className="card-title mb-4">Shipping Address</h2>
+          {/* --- LEFT COLUMN --- */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* 1. SHIPPING ADDRESS */}
+            <div className="card bg-base-100 shadow-sm border border-base-200">
+              <div className="card-body p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="card-title text-lg flex items-center gap-2">
+                    Shipping Address
+                  </h2>
+                  {selectedAddress && (
+                    <button
+                      className="btn btn-ghost btn-sm text-primary"
+                      onClick={() => setShowAddressList(true)}
+                    >
+                      Change
+                    </button>
+                  )}
+                </div>
 
                 {selectedAddress ? (
-                  <div className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          {selectedAddress.isMain && (
-                            <span className="badge badge-primary badge-sm">
-                              Primary
-                            </span>
-                          )}
-                          {selectedAddress.label && (
-                            <span className="font-medium">
-                              {selectedAddress.label}
-                            </span>
-                          )}
-                        </div>
-                        <p className="font-medium">
+                  <div className="bg-base-200/50 p-4 rounded-xl border border-base-200">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-base">
                           {selectedAddress.recipientName}
-                        </p>
-                        {selectedAddress.recipientPhone && (
-                          <p className="text-sm text-gray-600">
-                            {selectedAddress.recipientPhone}
-                          </p>
-                        )}
-                        <p className="mt-2">{selectedAddress.fullAddress}</p>
-                      </div>
-                      <button
-                        className="btn btn-sm btn-outline"
-                        onClick={() => setShowAddressList(true)}
-                      >
-                        Change
-                      </button>
-                    </div>
-
-                    {validationResult?.distance && (
-                      <div className="mt-4 p-3 bg-base-200 rounded-lg">
-                        <div className="flex items-center gap-2 text-sm">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5 text-primary"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-                            />
-                          </svg>
-                          <span>
-                            Distance to store:{" "}
-                            <strong>
-                              {validationResult.distance.toFixed(1)} km
-                            </strong>
+                        </span>
+                        {selectedAddress.isMain && (
+                          <span className="badge badge-primary badge-xs">
+                            Main
                           </span>
-                        </div>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {selectedAddress.recipientPhone}
+                      </p>
+                      <p className="text-sm mt-1 leading-relaxed">
+                        {selectedAddress.fullAddress}
+                      </p>
+                    </div>
+                    {validationResult?.distance && (
+                      <div className="mt-3 pt-3 border-t border-base-200 text-xs text-gray-500 flex items-center gap-1">
+                        Distance to store:{" "}
+                        {validationResult.distance.toFixed(2)} km
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-16 w-16 mx-auto text-gray-400 mb-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1"
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1"
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                    <h3 className="text-lg font-semibold mb-2">
-                      No shipping address selected
-                    </h3>
-                    <p className="text-gray-500 mb-4">
-                      Please select or add a shipping address to continue
-                    </p>
+                  <div className="text-center py-8 bg-base-200/30 rounded-xl border border-dashed border-base-300">
+                    <p className="text-gray-500 mb-4">No address selected</p>
                     <div className="flex gap-2 justify-center">
                       <button
-                        className="btn btn-primary"
+                        className="btn btn-primary btn-sm"
                         onClick={() => setShowAddressForm(true)}
                       >
-                        Add New Address
+                        + Add New Address
                       </button>
                       {checkoutPreview.addresses.length > 0 && (
                         <button
-                          className="btn btn-outline"
+                          className="btn btn-outline btn-sm"
                           onClick={() => setShowAddressList(true)}
                         >
-                          Choose Existing Address
+                          Select Existing
                         </button>
                       )}
                     </div>
@@ -526,112 +430,132 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Shipping Method Section */}
+            {/* 2. SHIPPING METHOD */}
             {selectedAddress && (
-              <div className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <h2 className="card-title mb-4">Shipping Method</h2>
+              <div className="card bg-base-100 shadow-sm border border-base-200">
+                <div className="card-body p-6">
+                  <h2 className="card-title text-lg mb-4 flex items-center gap-2">
+                    Shipping Method
+                  </h2>
 
-                  {validationResult?.availableShippingMethods &&
-                  validationResult.availableShippingMethods.length > 0 ? (
-                    <div className="space-y-3">
+                  {!validationResult?.availableShippingMethods ? (
+                    <div className="text-center py-6 bg-base-200/30 rounded-xl border border-dashed border-base-300">
+                      <p className="text-sm text-gray-500 mb-3">
+                        Select address and click below to check delivery
+                        options.
+                      </p>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={handleCalculateShipping}
+                        disabled={isCalculatingShipping}
+                      >
+                        {isCalculatingShipping ? (
+                          <span className="loading loading-spinner loading-xs"></span>
+                        ) : (
+                          "Calculate Shipping"
+                        )}
+                      </button>
+                    </div>
+                  ) : validationResult.availableShippingMethods.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-in fade-in zoom-in duration-300">
                       {validationResult.availableShippingMethods.map(
                         (shipping) => (
                           <div
                             key={shipping.serviceCode}
-                            className={`border rounded-lg p-4 cursor-pointer hover:border-primary transition-colors ${
+                            className={`
+                            relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md
+                            ${
                               selectedShipping?.serviceCode ===
                               shipping.serviceCode
-                                ? "border-primary border-2 bg-primary/5"
-                                : "border-base-300"
-                            }`}
+                                ? "border-primary bg-primary/5"
+                                : "border-base-200 hover:border-base-300 bg-base-100"
+                            }
+                          `}
                             onClick={() => handleShippingSelect(shipping)}
                           >
-                            <div className="flex justify-between items-center">
-                              <div>
-                                <h3 className="font-medium">
-                                  {shipping.serviceName}
-                                </h3>
-                                <p className="text-sm text-gray-600">
-                                  {shipping.description}
-                                </p>
-                                {shipping.estimatedDays && (
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    Estimated delivery: {shipping.estimatedDays}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <p className="font-bold">
-                                  {formatPrice(shipping.cost)}
-                                </p>
+                            <div className="flex justify-between items-start mb-2">
+                              <div
+                                className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                                  selectedShipping?.serviceCode ===
+                                  shipping.serviceCode
+                                    ? "border-primary"
+                                    : "border-gray-400"
+                                }`}
+                              >
                                 {selectedShipping?.serviceCode ===
                                   shipping.serviceCode && (
-                                  <span className="badge badge-primary badge-sm mt-1">
-                                    Selected
-                                  </span>
+                                  <div className="w-2 h-2 rounded-full bg-primary"></div>
                                 )}
                               </div>
+                              <span className="font-bold text-primary">
+                                {formatPrice(shipping.cost)}
+                              </span>
+                            </div>
+                            <h3 className="font-bold text-sm mb-1">
+                              {shipping.serviceName}
+                            </h3>
+                            <p className="text-xs text-gray-500 line-clamp-2 mb-1">
+                              {shipping.description}
+                            </p>
+                            <div className="badge badge-ghost badge-xs text-[10px]">
+                              {shipping.estimatedDays}
                             </div>
                           </div>
                         )
                       )}
                     </div>
                   ) : (
-                    <div className="text-center py-4">
-                      <p className="text-gray-500">
-                        No shipping methods available for this address. Please
-                        select a different address.
-                      </p>
-                      <button
-                        className="btn btn-sm btn-outline mt-2"
-                        onClick={calculateShipping}
-                      >
-                        Try Calculate Shipping
-                      </button>
+                    <div className="text-center py-8 text-error bg-error/10 rounded-xl">
+                      No shipping methods available for this location.
                     </div>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Order Items Section */}
-            <div className="card bg-base-100 shadow-xl">
-              <div className="card-body">
-                <h2 className="card-title mb-4">Order Items</h2>
-                <div className="space-y-4">
-                  {checkoutPreview.cartSummary.map((item) => (
+            {/* 3. ORDER ITEMS */}
+            <div className="card bg-base-100 shadow-sm border border-base-200">
+              <div className="card-body p-6">
+                <h2 className="card-title text-lg mb-4">
+                  Items ({checkoutPreview.cartSummary.length})
+                </h2>
+                <div className="divide-y divide-base-200">
+                  {checkoutPreview.cartSummary.map((item: any) => (
                     <div
                       key={item.productId}
-                      className="flex items-center gap-4"
+                      className="flex gap-4 py-4 first:pt-0 last:pb-0"
                     >
-                      {item.imageUrl && (
-                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-base-200">
+                      <div className="w-16 h-16 rounded-lg bg-base-200 shrink-0 overflow-hidden border border-base-200">
+                        {item.imageUrl && (
                           <img
                             src={item.imageUrl}
                             alt={item.productName}
                             className="w-full h-full object-cover"
                           />
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <h3 className="font-medium">{item.productName}</h3>
-                        <p className="text-sm text-gray-600">
-                          Quantity: {item.quantity}
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-sm truncate">
+                          {item.productName}
+                        </h4>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Qty: {item.quantity}
                         </p>
-                        {item.discount && (
-                          <div className="mt-1">
-                            <span className="inline-block px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">
-                              {item.discount.description}
-                            </span>
-                          </div>
+                        {item.discountAmount > 0 && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 mt-1">
+                            Saved {formatPrice(item.discountAmount)}
+                          </span>
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="font-medium">{formatPrice(item.price)}</p>
-                        <p className="text-sm text-gray-600">
-                          Total: {formatPrice(item.total)}
-                        </p>
+                        <div className="font-bold text-sm">
+                          {formatPrice(item.total)}
+                        </div>
+                        {item.discountAmount > 0 && (
+                          <div className="text-xs text-gray-400 line-through">
+                            {formatPrice(item.total + item.discountAmount)}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -640,68 +564,125 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Right Column - Order Summary */}
+          {/* --- RIGHT COLUMN (SUMMARY) --- */}
           <div className="lg:col-span-1">
-            <div className="card bg-base-100 shadow-xl sticky top-4">
-              <div className="card-body">
-                <h2 className="card-title mb-4">Order Summary</h2>
+            <div className="card bg-base-100 shadow-xl sticky top-4 border border-base-200">
+              <div className="card-body p-6">
+                <h2 className="card-title text-lg mb-6">Order Summary</h2>
 
-                <div className="space-y-3">
-                  <div className="flex justify-between">
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between text-gray-600">
                     <span>Subtotal</span>
-                    <span>{formatPrice(checkoutPreview.subtotal)}</span>
+                    <span>{formatPrice(displaySubtotal)}</span>
                   </div>
 
-                  {selectedShipping && (
-                    <div className="flex justify-between">
-                      <span>Shipping ({selectedShipping.serviceName})</span>
-                      <span>{formatPrice(selectedShipping.cost)}</span>
+                  {displayStoreDiscount > 0 && (
+                    <div className="flex justify-between text-success">
+                      <span>Store Discount</span>
+                      <span>-{formatPrice(displayStoreDiscount)}</span>
                     </div>
                   )}
 
-                  {effectivePreviewDiscount > 0 && (
-                    <div className="flex justify-between text-sm text-green-600">
-                      <span>Discount</span>
-                      <span>-{formatPrice(effectivePreviewDiscount)}</span>
-                    </div>
-                  )}
-
-                  <div className="divider"></div>
-
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total</span>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Shipping</span>
                     <span>
-                      {formatPrice(
-                        checkoutPreview.subtotal + (selectedShipping?.cost || 0) - (effectivePreviewDiscount || 0)
+                      {displayShippingCost > 0
+                        ? formatPrice(displayShippingCost)
+                        : "-"}
+                    </span>
+                  </div>
+
+                  {(displayVoucherDeduction > 0 ||
+                    displayShippingDeduction > 0) && (
+                    <div className="py-2 border-y border-dashed border-base-300 space-y-2 my-2">
+                      {displayVoucherDeduction > 0 && (
+                        <div className="flex justify-between text-primary font-medium">
+                          <span>Voucher (Item)</span>
+                          <span>-{formatPrice(displayVoucherDeduction)}</span>
+                        </div>
                       )}
+                      {displayShippingDeduction > 0 && (
+                        <div className="flex justify-between text-primary font-medium">
+                          <span>Voucher (Shipping)</span>
+                          <span>-{formatPrice(displayShippingDeduction)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="divider my-2"></div>
+
+                  <div className="flex justify-between items-end">
+                    <span className="font-bold text-lg">Total</span>
+                    <span className="text-2xl font-bold text-primary">
+                      {formatPrice(displayFinalTotal)}
                     </span>
                   </div>
                 </div>
 
+                <div className="mt-6 pt-6 border-t border-base-200">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm font-semibold flex items-center gap-2">
+                      Voucher Code
+                    </label>
+                    <button
+                      className="text-xs text-primary hover:underline font-medium"
+                      onClick={() => setShowVoucherModal(true)}
+                    >
+                      See Available Vouchers
+                    </button>
+                  </div>
+
+                  <div className="join w-full">
+                    <input
+                      type="text"
+                      className="input input-bordered input-sm join-item w-full focus:outline-none"
+                      placeholder="Enter code"
+                      value={voucherCode}
+                      onChange={(e) =>
+                        setVoucherCode(e.target.value.toUpperCase())
+                      }
+                      disabled={!!appliedVoucherCode}
+                    />
+                    {appliedVoucherCode ? (
+                      <button
+                        className="btn btn-sm btn-error join-item text-white"
+                        onClick={handleRemoveVoucher}
+                      >
+                        X
+                      </button>
+                    ) : (
+                      <button
+                        className="btn btn-sm btn-neutral join-item"
+                        onClick={handleApplyVoucher}
+                        disabled={isApplyingVoucher || !voucherCode}
+                      >
+                        {isApplyingVoucher ? "..." : "Apply"}
+                      </button>
+                    )}
+                  </div>
+
+                  {appliedVoucherCode && (
+                    <div className="text-xs text-success mt-2 flex items-center gap-1 font-medium bg-success/10 p-2 rounded-lg">
+                      Voucher code applied!
+                    </div>
+                  )}
+                </div>
+
                 <div className="mt-6">
                   <button
-                    className="btn btn-primary btn-block"
+                    className="btn btn-primary btn-block shadow-lg shadow-primary/30 h-12 text-lg font-bold"
                     onClick={handlePlaceOrder}
                     disabled={
                       !selectedAddress || !selectedShipping || isPlacingOrder
                     }
                   >
                     {isPlacingOrder ? (
-                      <>
-                        <span className="loading loading-spinner"></span>
-                        Processing Order...
-                      </>
+                      <span className="loading loading-spinner"></span>
                     ) : (
-                      "Place Order"
+                      `Pay ${formatPrice(displayFinalTotal)}`
                     )}
                   </button>
-                </div>
-
-                <div className="mt-4 text-xs text-gray-500">
-                  <p>
-                    By placing your order, you agree to our Terms of Service and
-                    Privacy Policy.
-                  </p>
                 </div>
               </div>
             </div>
@@ -710,22 +691,40 @@ export default function CheckoutPage() {
       </div>
 
       {/* Address Selection Modal */}
-      {showAddressList && checkoutPreview.addresses.length > 0 && (
-        <div className="modal modal-open">
-          <div className="modal-box max-w-4xl">
-            <h3 className="font-bold text-lg mb-4">Select Shipping Address</h3>
-
-            <div className="max-h-96 overflow-y-auto pr-2">
-              <AddressList
-                addresses={checkoutPreview.addresses}
-                onAddressUpdate={fetchCheckoutPreview}
-                selectable={true}
-                onSelect={handleAddressSelect}
-                selectedAddressId={selectedAddress?.id}
-              />
+      {showAddressList && checkoutPreview?.addresses && (
+        <div className="modal modal-open modal-bottom sm:modal-middle">
+          <div
+            className="modal-backdrop"
+            onClick={() => setShowAddressList(false)}
+          ></div>
+          <div className="modal-box w-11/12 max-w-4xl p-0 flex flex-col max-h-[85vh]">
+            <div className="flex justify-between items-center p-5 border-b border-base-200 bg-base-100 sticky top-0 z-20">
+              <h3 className="font-bold text-xl flex items-center gap-2">
+                Select Shipping Address
+              </h3>
+              <button
+                className="btn btn-sm btn-circle btn-ghost"
+                onClick={() => setShowAddressList(false)}
+              >
+                ✕
+              </button>
             </div>
-
-            <div className="modal-action">
+            <div className="flex-1 overflow-y-auto p-5 bg-base-100">
+              {checkoutPreview.addresses.length === 0 ? (
+                <div className="text-center py-10 text-gray-500">
+                  You don't have any saved addresses.
+                </div>
+              ) : (
+                <AddressList
+                  addresses={checkoutPreview.addresses}
+                  onAddressUpdate={() => fetchCheckoutPreview()}
+                  selectable={true}
+                  onSelect={handleAddressSelect}
+                  selectedAddressId={selectedAddress?.id}
+                />
+              )}
+            </div>
+            <div className="p-5 border-t border-base-200 bg-base-100 flex justify-end gap-3 sticky bottom-0 z-20">
               <button
                 className="btn btn-ghost"
                 onClick={() => setShowAddressList(false)}
@@ -733,15 +732,72 @@ export default function CheckoutPage() {
                 Cancel
               </button>
               <button
-                className="btn btn-outline"
+                className="btn btn-primary"
                 onClick={() => {
                   setShowAddressList(false);
                   setShowAddressForm(true);
                 }}
               >
-                Add New Address
+                + Add New Address
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Voucher Selection Modal */}
+      {showVoucherModal && (
+        <div className="modal modal-open modal-bottom sm:modal-middle">
+          <div
+            className="modal-backdrop"
+            onClick={() => setShowVoucherModal(false)}
+          ></div>
+          <div className="modal-box">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg">My Vouchers</h3>
+              <button
+                className="btn btn-sm btn-circle btn-ghost"
+                onClick={() => setShowVoucherModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {myVouchers.length === 0 ? (
+              <div className="py-10 text-center text-gray-500 bg-base-200/50 rounded-xl">
+                <p>No vouchers available.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                {myVouchers.map((v) => (
+                  <div
+                    key={v.id}
+                    className="border border-base-300 rounded-xl p-4 hover:border-primary cursor-pointer transition-all hover:shadow-md bg-base-100 relative overflow-hidden group"
+                    onClick={() => handleSelectVoucherFromList(v.code)}
+                  >
+                    <div className="absolute -right-4 -top-4 w-16 h-16 bg-primary/5 rounded-full group-hover:bg-primary/10 transition-colors"></div>
+
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-bold text-primary text-lg tracking-wide">
+                        {v.code}
+                      </span>
+                      <span className="badge badge-sm badge-outline">
+                        {v.type}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium text-gray-700">
+                      {v.description}
+                    </p>
+                    <div className="mt-2 pt-2 border-t border-dashed border-base-200 flex justify-between text-xs text-gray-500">
+                      <span>Min. spend: {formatPrice(v.minPurchase)}</span>
+                      <span>
+                        Exp: {new Date(v.expiresAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

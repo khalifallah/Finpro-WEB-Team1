@@ -19,6 +19,13 @@ export interface CartItem {
   quantity: number;
   stockAvailable: number;
   product: CartProduct;
+  originalPrice?: number;
+  finalPrice?: number;
+  discountAmount?: number;
+  appliedDiscount?: {
+    type: string;
+    name: string;
+  } | null;
 }
 
 export interface Cart {
@@ -28,4 +35,5 @@ export interface Cart {
   cartItems: CartItem[];
   totalItems: number;
   subtotal: number;
+  originalSubtotal?: number;
 }
