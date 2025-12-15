@@ -27,6 +27,7 @@ export default function Home() {
     longitude: number;
   } | null>(null);
   const [selectedStore, setSelectedStore] = useState<any>(null);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
@@ -126,7 +127,8 @@ export default function Home() {
     longitude?: number,
     storeIdOverride?: number,
     page?: number,
-    limit?: number
+    limit?: number,
+    categoryId?: number | null
   ) => {
     setLoading(true);
     setError(null);
@@ -141,6 +143,9 @@ export default function Home() {
       } else if (latitude && longitude) {
         params.lat = latitude;
         params.lng = longitude;
+      }
+      if (typeof categoryId === 'number') {
+        params.category = categoryId;
       }
 
       console.log("Request params:", params);
@@ -293,6 +298,13 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCategorySelect = (categoryId: number) => {
+    setSelectedCategory(categoryId);
+    setCurrentPage(1);
+    const sid = selectedStore?.id || (localStorage.getItem("storeId") ? Number(localStorage.getItem("storeId")) : undefined);
+    fetchHomepageData(undefined, undefined, sid, 1, pageSize, categoryId);
   };
 
   // Check for location permission on component mount
@@ -450,6 +462,7 @@ export default function Home() {
         selectedStore={selectedStore}
         onStoreChange={handleStoreChange}
         onLocationRequest={() => setShowLocationModal(true)}
+        onCategorySelect={handleCategorySelect}
       />
 
       {/* Main Content */}

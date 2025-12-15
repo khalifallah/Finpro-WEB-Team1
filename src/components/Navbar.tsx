@@ -49,6 +49,7 @@ interface NavbarProps {
   selectedStore: StoreInfo | null;
   onStoreChange: (storeId: number) => void;
   onLocationRequest: () => void;
+  onCategorySelect?: (categoryId?: number) => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
@@ -57,6 +58,7 @@ const Navbar: React.FC<NavbarProps> = ({
   selectedStore,
   onStoreChange,
   onLocationRequest,
+  onCategorySelect,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isStoreMenuOpen, setIsStoreMenuOpen] = useState(false);
@@ -396,17 +398,36 @@ const Navbar: React.FC<NavbarProps> = ({
                   <FaChevronDown className="text-xs" />
                 </div>
                 <ul className="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-box w-64 z-50">
+                  <li key="all-categories">
+                    <div
+                      onClick={() => onCategorySelect?.()}
+                      className="flex justify-between py-3 cursor-pointer hover:bg-base-200 rounded font-semibold"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') onCategorySelect?.();
+                      }}
+                    >
+                      <span>All Categories</span>
+                      <span className="badge badge-ghost">{categories.reduce((s, c) => s + c.productCount, 0)}</span>
+                    </div>
+                  </li>
                   {categories.map((category) => (
                     <li key={category.id}>
-                      <Link
-                        href={`/products?category=${category.id}`}
-                        className="flex justify-between py-3"
+                      <div
+                        onClick={() => onCategorySelect?.(category.id)}
+                        className="flex justify-between py-3 cursor-pointer hover:bg-base-200 rounded"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') onCategorySelect?.(category.id);
+                        }}
                       >
                         <span>{category.name}</span>
                         <span className="badge badge-ghost">
                           {category.productCount}
                         </span>
-                      </Link>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -414,15 +435,23 @@ const Navbar: React.FC<NavbarProps> = ({
 
               {/* Navigation Links */}
               <div className="flex items-center ml-8 space-x-6">
-                {featuredLinks.map((link) => (
-                  <Link
-                    key={link.name}
-                    href={link.url}
-                    className="font-medium hover:text-primary transition-colors"
-                  >
-                    {link.name}
-                  </Link>
-                ))}
+                {featuredLinks
+                  .filter(
+                    (l) =>
+                      l.url !== '/products' &&
+                      l.name !== 'Products' &&
+                      l.url !== '/categories' &&
+                      l.name !== 'Categories'
+                  )
+                  .map((link) => (
+                    <Link
+                      key={link.name}
+                      href={link.url}
+                      className="font-medium hover:text-primary transition-colors"
+                    >
+                      {link.name}
+                    </Link>
+                  ))}
               </div>
 
               {/* Promo Banner */}
@@ -486,33 +515,55 @@ const Navbar: React.FC<NavbarProps> = ({
             <div className="overflow-y-auto h-[calc(100vh-140px)]">
               <ul className="menu p-4 space-y-2">
                 <li className="menu-title">Shopping</li>
-                {featuredLinks.map((link) => (
-                  <li key={link.name}>
-                    <Link
-                      href={link.url}
-                      onClick={() => setIsMenuOpen(false)}
-                      className="py-3"
-                    >
-                      {link.name}
-                    </Link>
-                  </li>
-                ))}
+                {featuredLinks
+                  .filter(
+                    (l) =>
+                      l.url !== '/products' &&
+                      l.name !== 'Products' &&
+                      l.url !== '/categories' &&
+                      l.name !== 'Categories'
+                  )
+                  .map((link) => (
+                    <li key={link.name}>
+                      <Link
+                        href={link.url}
+                        onClick={() => setIsMenuOpen(false)}
+                        className="py-3"
+                      >
+                        {link.name}
+                      </Link>
+                    </li>
+                  ))}
 
                 <div className="divider"></div>
 
                 <li className="menu-title">Categories</li>
+                <li key="all-categories-mobile">
+                  <div
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onCategorySelect?.();
+                    }}
+                    className="flex justify-between py-3 cursor-pointer hover:bg-base-200 rounded font-semibold"
+                  >
+                    <span>All Categories</span>
+                    <span className="badge badge-ghost">{categories.reduce((s, c) => s + c.productCount, 0)}</span>
+                  </div>
+                </li>
                 {categories.map((category) => (
                   <li key={category.id}>
-                    <Link
-                      href={`/products?category=${category.id}`}
-                      onClick={() => setIsMenuOpen(false)}
-                      className="flex justify-between py-3"
+                    <div
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        onCategorySelect?.(category.id);
+                      }}
+                      className="flex justify-between py-3 cursor-pointer hover:bg-base-200 rounded"
                     >
                       <span>{category.name}</span>
                       <span className="badge badge-ghost">
                         {category.productCount}
                       </span>
-                    </Link>
+                    </div>
                   </li>
                 ))}
 
