@@ -50,6 +50,7 @@ interface NavbarProps {
   onStoreChange: (storeId: number) => void;
   onLocationRequest: () => void;
   onCategorySelect?: (categoryId?: number) => void;
+  onSearch?: (query?: string) => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
@@ -59,6 +60,7 @@ const Navbar: React.FC<NavbarProps> = ({
   onStoreChange,
   onLocationRequest,
   onCategorySelect,
+  onSearch,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isStoreMenuOpen, setIsStoreMenuOpen] = useState(false);
@@ -69,6 +71,7 @@ const Navbar: React.FC<NavbarProps> = ({
   } | null>(null);
   const { user, logout, isLoading } = useAuth();
   const { cartCount } = useCart();
+  const [searchInput, setSearchInput] = useState<string>('');
 
   // Try to get user location on component mount
   useEffect(() => {
@@ -252,6 +255,16 @@ const Navbar: React.FC<NavbarProps> = ({
               <div className="relative">
                 <input
                   type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      onSearch?.(searchInput.trim() || undefined);
+                    } else if (e.key === 'Escape') {
+                      setSearchInput('');
+                      onSearch?.();
+                    }
+                  }}
                   placeholder="Search for products, brands and more..."
                   className="input input-bordered w-full pl-10 pr-4 rounded-full"
                 />
@@ -345,6 +358,18 @@ const Navbar: React.FC<NavbarProps> = ({
               <div className="relative">
                 <input
                   type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      onSearch?.(searchInput.trim() || undefined);
+                      setIsSearchOpen(false);
+                    } else if (e.key === 'Escape') {
+                      setSearchInput('');
+                      onSearch?.();
+                      setIsSearchOpen(false);
+                    }
+                  }}
                   placeholder="Search products..."
                   className="input input-bordered w-full pl-10 pr-4"
                 />

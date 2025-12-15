@@ -28,6 +28,7 @@ export default function Home() {
   } | null>(null);
   const [selectedStore, setSelectedStore] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
@@ -307,6 +308,12 @@ export default function Home() {
     fetchHomepageData(undefined, undefined, sid, 1, pageSize, categoryId);
   };
 
+  const handleSearch = (query?: string) => {
+    // minimal client-side filtering: set search query and reset page
+    setSearchQuery(query ? query : null);
+    setCurrentPage(1);
+  };
+
   // Check for location permission on component mount
   useEffect(() => {
     // Check if we have previously stored location
@@ -463,6 +470,7 @@ export default function Home() {
         onStoreChange={handleStoreChange}
         onLocationRequest={() => setShowLocationModal(true)}
         onCategorySelect={handleCategorySelect}
+        onSearch={handleSearch}
       />
 
       {/* Main Content */}
@@ -506,7 +514,13 @@ export default function Home() {
 
         {/* Product List */}
         <ProductList
-          products={homepageData?.productList.products || []}
+          products={
+            searchQuery && homepageData?.productList?.products
+              ? homepageData.productList.products.filter((p: any) =>
+                  p.name?.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+              : homepageData?.productList.products || []
+          }
           pagination={homepageData?.productList.pagination}
           loading={loading}
           onAddToCart={handleAddToCart}
