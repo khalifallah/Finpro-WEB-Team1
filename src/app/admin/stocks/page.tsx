@@ -366,12 +366,10 @@ export default function StocksPage() {
       if (query) params.set('search', query);
       if (selectedStore) params.set('storeId', String(selectedStore));
       params.set('page', String(resetTo));
-      // Only reset URL and fetch when there is no existing `page` param.
-      // This avoids overriding a user-loaded `?page=2` on refresh.
-      if (!searchParams?.get('page')) {
-        router.replace(`${pathname}?${params.toString()}`);
-        fetchStocks(resetTo);
-      }
+      // Always update the URL and fetch page 1 when filters change
+      // so search input immediately reflects in the stocks list.
+      router.replace(`${pathname}?${params.toString()}`);
+      fetchStocks(resetTo);
     } catch (e) {
       // ignore router errors
     }
