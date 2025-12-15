@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import DataTable from '@/components/common/DataTable';
 import SearchBar from '@/components/common/SearchBar';
-import { FiBarChart2, FiEdit2, FiTrash2, FiPercent, FiDollarSign, FiGift } from 'react-icons/fi';
+import { FiBarChart2, FiEdit2, FiTrash2, FiPercent, FiDollarSign, FiGift, FiShoppingBag, FiAlertTriangle } from 'react-icons/fi';
 import { toast } from 'sonner';
 import Pagination from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -340,7 +340,7 @@ export default function DiscountsPage() {
         const isExpired = date < new Date();
         return (
           <span className={`font-medium ${isExpired ? 'text-red-600 font-bold' : 'text-gray-700'}`}>
-            {date.toLocaleDateString('id-ID')}{isExpired && ' ⚠️'}
+            {date.toLocaleDateString('id-ID')}{isExpired && <FiAlertTriangle className="inline-block ml-2 h-4 w-4 text-red-600" />}
           </span>
         );
       },
@@ -409,8 +409,10 @@ export default function DiscountsPage() {
 
       {/* Store Admin Info - ✅ RESPONSIVE */}
       {!isSuperAdmin && (
-        <div className={`rounded-lg p-3 sm:p-4 flex items-center gap-3 border ${userStoreId ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'}`}>
-          <span className="text-2xl">{userStoreId ? '🏪' : '⚠️'}</span>
+        <div className={`rounded-lg p-3 sm:p-4 flex items-center gap-3 border shadow-sm ${userStoreId ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'}`}>
+          <span className="text-2xl flex-shrink-0">
+            {userStoreId ? <FiShoppingBag className="h-6 w-6 text-green-700" /> : <FiAlertTriangle className="h-6 w-6 text-red-700" />}
+          </span>
           <div>
             <p className={`font-semibold ${userStoreId ? 'text-green-800' : 'text-red-800'}`}>
               {userStoreId ? `Your Store: ${userStoreName}` : 'Store Not Assigned'}
