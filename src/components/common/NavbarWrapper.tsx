@@ -9,7 +9,7 @@ const NavbarWrapper = () => {
 
   // Daftar rute yang MENGGUNAKAN Simple Navbar
   // (Hanya halaman-halaman ini yang akan menampilkan navbar dari wrapper ini)
-  const simpleRoutes = ["/cart", "/checkout", "/orders"];
+  const simpleRoutes = ["/cart", "/checkout", "/orders", "/profile"];
 
   // Cek apakah URL saat ini diawali dengan salah satu rute di atas
   const isSimpleRoute = simpleRoutes.some((route) =>
