@@ -16,6 +16,7 @@ import {
   FaClock,
   FaMotorcycle,
   FaStar,
+  FaHeart, // Import Heart Icon
 } from "react-icons/fa";
 import { useCart } from "@/contexts/CartContext";
 
@@ -71,7 +72,7 @@ const Navbar: React.FC<NavbarProps> = ({
   } | null>(null);
   const { user, logout, isLoading } = useAuth();
   const { cartCount } = useCart();
-  const [searchInput, setSearchInput] = useState<string>('');
+  const [searchInput, setSearchInput] = useState<string>("");
 
   // Try to get user location on component mount
   useEffect(() => {
@@ -201,24 +202,6 @@ const Navbar: React.FC<NavbarProps> = ({
     </div>
   );
 
-  function getIcon(icon: string | undefined): React.ReactNode {
-    if (!icon) return null;
-
-    const iconMap: { [key: string]: React.ReactNode } = {
-      "shopping-cart": <FaShoppingCart className="mr-2" />,
-      user: <FaUser className="mr-2" />,
-      store: <FaStore className="mr-2" />,
-      location: <FaMapMarkerAlt className="mr-2" />,
-      phone: <FaPhone className="mr-2" />,
-      clock: <FaClock className="mr-2" />,
-      motorcycle: <FaMotorcycle className="mr-2" />,
-      star: <FaStar className="mr-2" />,
-      search: <FaSearch className="mr-2" />,
-    };
-
-    return iconMap[icon.toLowerCase()] || null;
-  }
-
   return (
     <>
       {/* Top Navigation Bar */}
@@ -239,7 +222,7 @@ const Navbar: React.FC<NavbarProps> = ({
               <Link href="/" className="flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <img
-                    src="Beyond_Market_compressed.png"
+                    src="/Beyond_Market_compressed.png"
                     alt="Beyond Market"
                     className="h-8 w-auto"
                   />
@@ -258,10 +241,10 @@ const Navbar: React.FC<NavbarProps> = ({
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       onSearch?.(searchInput.trim() || undefined);
-                    } else if (e.key === 'Escape') {
-                      setSearchInput('');
+                    } else if (e.key === "Escape") {
+                      setSearchInput("");
                       onSearch?.();
                     }
                   }}
@@ -273,7 +256,7 @@ const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* User Actions */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               {/* Mobile Search Button */}
               <button
                 onClick={() => setIsSearchOpen(!isSearchOpen)}
@@ -283,8 +266,24 @@ const Navbar: React.FC<NavbarProps> = ({
                 <FaSearch size={18} />
               </button>
 
+              {/* Wishlist Icon (New) */}
+              <Link
+                href="/wishlist"
+                className="btn btn-ghost btn-square relative hidden sm:inline-flex"
+                aria-label="Wishlist"
+              >
+                <FaHeart
+                  size={20}
+                  className="text-gray-600 hover:text-red-500 transition-colors"
+                />
+              </Link>
+
               {/* Cart Icon */}
-              <Link href="/cart" className="btn btn-ghost btn-square relative">
+              <Link
+                href="/cart"
+                className="btn btn-ghost btn-square relative"
+                aria-label="Cart"
+              >
                 <FaShoppingCart size={20} />
                 {cartCount > 0 && (
                   <span className="absolute -top-2 -right-2 badge badge-primary badge-xs">
@@ -312,7 +311,7 @@ const Navbar: React.FC<NavbarProps> = ({
                   </div>
                   <ul
                     tabIndex={0}
-                    className="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-box w-56 mt-2 border"
+                    className="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-box w-56 mt-2 border z-[100]"
                   >
                     <li className="menu-title px-4 py-2">
                       <p className="font-bold">{user.fullName}</p>
@@ -321,8 +320,8 @@ const Navbar: React.FC<NavbarProps> = ({
                     <li>
                       <Link href="/profile">My Profile</Link>
                     </li>
-                    {/* ✅ ADD THIS - Admin Dashboard Link */}
-                    {user?.role === 'SUPER_ADMIN' || user?.role === 'STORE_ADMIN' ? (
+                    {user?.role === "SUPER_ADMIN" ||
+                    user?.role === "STORE_ADMIN" ? (
                       <li>
                         <Link href="/admin/dashboard">Admin Dashboard</Link>
                       </li>
@@ -361,11 +360,11 @@ const Navbar: React.FC<NavbarProps> = ({
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       onSearch?.(searchInput.trim() || undefined);
                       setIsSearchOpen(false);
-                    } else if (e.key === 'Escape') {
-                      setSearchInput('');
+                    } else if (e.key === "Escape") {
+                      setSearchInput("");
                       onSearch?.();
                       setIsSearchOpen(false);
                     }
@@ -430,11 +429,14 @@ const Navbar: React.FC<NavbarProps> = ({
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') onCategorySelect?.();
+                        if (e.key === "Enter" || e.key === " ")
+                          onCategorySelect?.();
                       }}
                     >
                       <span>All Categories</span>
-                      <span className="badge badge-ghost">{categories.reduce((s, c) => s + c.productCount, 0)}</span>
+                      <span className="badge badge-ghost">
+                        {categories.reduce((s, c) => s + c.productCount, 0)}
+                      </span>
                     </div>
                   </li>
                   {categories.map((category) => (
@@ -445,7 +447,8 @@ const Navbar: React.FC<NavbarProps> = ({
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') onCategorySelect?.(category.id);
+                          if (e.key === "Enter" || e.key === " ")
+                            onCategorySelect?.(category.id);
                         }}
                       >
                         <span>{category.name}</span>
@@ -463,10 +466,10 @@ const Navbar: React.FC<NavbarProps> = ({
                 {featuredLinks
                   .filter(
                     (l) =>
-                      l.url !== '/products' &&
-                      l.name !== 'Products' &&
-                      l.url !== '/categories' &&
-                      l.name !== 'Categories'
+                      l.url !== "/products" &&
+                      l.name !== "Products" &&
+                      l.url !== "/categories" &&
+                      l.name !== "Categories"
                   )
                   .map((link) => (
                     <Link
@@ -543,10 +546,10 @@ const Navbar: React.FC<NavbarProps> = ({
                 {featuredLinks
                   .filter(
                     (l) =>
-                      l.url !== '/products' &&
-                      l.name !== 'Products' &&
-                      l.url !== '/categories' &&
-                      l.name !== 'Categories'
+                      l.url !== "/products" &&
+                      l.name !== "Products" &&
+                      l.url !== "/categories" &&
+                      l.name !== "Categories"
                   )
                   .map((link) => (
                     <li key={link.name}>
@@ -572,7 +575,9 @@ const Navbar: React.FC<NavbarProps> = ({
                     className="flex justify-between py-3 cursor-pointer hover:bg-base-200 rounded font-semibold"
                   >
                     <span>All Categories</span>
-                    <span className="badge badge-ghost">{categories.reduce((s, c) => s + c.productCount, 0)}</span>
+                    <span className="badge badge-ghost">
+                      {categories.reduce((s, c) => s + c.productCount, 0)}
+                    </span>
                   </div>
                 </li>
                 {categories.map((category) => (
@@ -599,13 +604,24 @@ const Navbar: React.FC<NavbarProps> = ({
                       <Link
                         href="/login"
                         onClick={() => setIsMenuOpen(false)}
-                        className="btn btn-primary"
+                        className="btn btn-primary text-white"
                       >
                         Login / Register
                       </Link>
                     </li>
                   </>
                 )}
+
+                {/* Mobile Menu Wishlist Link */}
+                <li>
+                  <Link
+                    href="/wishlist"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="py-3"
+                  >
+                    Wishlist
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>

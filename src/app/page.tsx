@@ -301,8 +301,8 @@ export default function Home() {
     }
   };
 
-  const handleCategorySelect = (categoryId: number) => {
-    setSelectedCategory(categoryId);
+  const handleCategorySelect = (categoryId?: number) => {
+    setSelectedCategory(categoryId || null);
     setCurrentPage(1);
     const sid = selectedStore?.id || (localStorage.getItem("storeId") ? Number(localStorage.getItem("storeId")) : undefined);
     fetchHomepageData(undefined, undefined, sid, 1, pageSize, categoryId);
