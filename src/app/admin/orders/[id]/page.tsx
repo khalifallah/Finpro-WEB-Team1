@@ -54,7 +54,13 @@ export default function AdminOrderDetailPage() {
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // MODAL STATES
   const [showImageModal, setShowImageModal] = useState(false);
+  const [activeModal, setActiveModal] = useState<
+    "approve" | "reject" | "ship" | "cancel" | null
+  >(null);
+  const [cancelReasonInput, setCancelReasonInput] = useState("");
 
   const orderId = params.id;
 
@@ -62,7 +68,6 @@ export default function AdminOrderDetailPage() {
   const fetchOrder = async () => {
     try {
       setLoading(true);
-      // Panggil endpoint Admin Detail
       const response = await axiosInstance.get(`/orders/admin/${orderId}`);
       setOrder(response.data.data.order);
     } catch (err: any) {
@@ -77,21 +82,18 @@ export default function AdminOrderDetailPage() {
     if (user && orderId) fetchOrder();
   }, [orderId, user]);
 
-  // --- ACTION HANDLERS ---
+  // --- API HANDLERS (Dipanggil dari Modal) ---
 
-  const handleUpdateStatus = async (newStatus: string) => {
-    if (!confirm(`Are you sure you want to update status to ${newStatus}?`))
-      return;
-
+  const processUpdateStatus = async (newStatus: string) => {
     try {
       setActionLoading(true);
-      // Endpoint update status admin
       await axiosInstance.patch(`/orders/admin/${orderId}/status`, {
         status: newStatus,
       });
 
       showToast(`Order status updated to ${newStatus}`, "success");
-      fetchOrder(); // Refresh data
+      closeAllModals();
+      fetchOrder();
     } catch (err: any) {
       showToast(err.response?.data?.message || "Update failed", "error");
     } finally {
@@ -99,22 +101,31 @@ export default function AdminOrderDetailPage() {
     }
   };
 
-  const handleCancelOrder = async () => {
-    const reason = prompt("Enter cancellation reason:");
-    if (!reason) return;
+  const processCancelOrder = async () => {
+    if (!cancelReasonInput.trim()) {
+      showToast("Please enter a cancellation reason", "error");
+      return;
+    }
 
     try {
       setActionLoading(true);
-      // Endpoint cancel admin
-      await axiosInstance.post(`/orders/admin/${orderId}/cancel`, { reason });
+      await axiosInstance.post(`/orders/admin/${orderId}/cancel`, {
+        reason: cancelReasonInput,
+      });
 
       showToast("Order cancelled successfully", "success");
+      closeAllModals();
       fetchOrder();
     } catch (err: any) {
       showToast(err.response?.data?.message || "Cancellation failed", "error");
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const closeAllModals = () => {
+    setActiveModal(null);
+    setCancelReasonInput("");
   };
 
   if (loading) {
@@ -128,7 +139,7 @@ export default function AdminOrderDetailPage() {
   if (!order) return <div>Order not found</div>;
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto pb-20">
       {/* Breadcrumb & Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -224,7 +235,6 @@ export default function AdminOrderDetailPage() {
 
           {/* 2. Payment Proof Verification */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            {/* Header Kotak - Selalu Muncul */}
             <div className="p-4 bg-gray-50 border-b border-gray-100 font-semibold text-gray-700 flex justify-between">
               <span>Payment Proof</span>
               <span className="text-xs font-normal text-gray-500">
@@ -233,9 +243,7 @@ export default function AdminOrderDetailPage() {
             </div>
 
             <div className="p-4">
-              {/* LOGIKA PENGECEKAN FOTO ADA DI SINI */}
               {order.payment?.paymentProofUrl ? (
-                // KONDISI A: ADA FOTO (Kode Lama)
                 <div
                   className="relative h-64 w-full bg-gray-100 rounded-lg overflow-hidden cursor-pointer border-2 border-dashed border-gray-300 hover:border-primary transition-colors"
                   onClick={() => setShowImageModal(true)}
@@ -252,7 +260,6 @@ export default function AdminOrderDetailPage() {
                   </div>
                 </div>
               ) : (
-                // KONDISI B: TIDAK ADA FOTO (Fallback UI)
                 <div className="h-64 w-full bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -310,7 +317,7 @@ export default function AdminOrderDetailPage() {
 
                   {/* TOMBOL APPROVE (HIJAU) */}
                   <button
-                    onClick={() => handleUpdateStatus("PROCESSING")}
+                    onClick={() => setActiveModal("approve")}
                     disabled={actionLoading}
                     className="btn bg-green-600 hover:bg-green-700 text-white btn-block border-0 flex items-center gap-2"
                   >
@@ -331,7 +338,7 @@ export default function AdminOrderDetailPage() {
 
                   {/* TOMBOL REJECT (KUNING/AMBER) */}
                   <button
-                    onClick={() => handleUpdateStatus("PENDING_PAYMENT")}
+                    onClick={() => setActiveModal("reject")}
                     disabled={actionLoading}
                     className="btn bg-amber-500 hover:bg-amber-600 text-white btn-block border-0 flex items-center gap-2"
                   >
@@ -374,7 +381,7 @@ export default function AdminOrderDetailPage() {
 
                   {/* TOMBOL SHIP (BIRU PRIMARY) */}
                   <button
-                    onClick={() => handleUpdateStatus("SHIPPED")}
+                    onClick={() => setActiveModal("ship")}
                     disabled={actionLoading}
                     className="btn btn-primary btn-block flex items-center gap-2"
                   >
@@ -405,7 +412,7 @@ export default function AdminOrderDetailPage() {
                 <>
                   <div className="divider my-2 text-xs text-gray-400">Or</div>
                   <button
-                    onClick={handleCancelOrder}
+                    onClick={() => setActiveModal("cancel")}
                     disabled={actionLoading}
                     className="btn btn-outline btn-error btn-block border-red-300 hover:border-red-500 text-red-500 hover:bg-red-50 flex items-center gap-2"
                   >
@@ -514,7 +521,161 @@ export default function AdminOrderDetailPage() {
         </div>
       </div>
 
-      {/* Image Modal */}
+      {/* --- MODALS SECTION --- */}
+
+      {/* 1. APPROVE MODAL */}
+      <dialog
+        className={`modal ${activeModal === "approve" ? "modal-open" : ""}`}
+      >
+        <div className="modal-box">
+          <h3 className="font-bold text-lg text-green-700">Approve Payment?</h3>
+          <p className="py-4">
+            Are you sure you want to approve this payment proof? The order
+            status will be updated to <b>PROCESSING</b>.
+          </p>
+          <div className="modal-action">
+            <button
+              className="btn"
+              onClick={closeAllModals}
+              disabled={actionLoading}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-success text-white"
+              onClick={() => processUpdateStatus("PROCESSING")}
+              disabled={actionLoading}
+            >
+              {actionLoading ? (
+                <span className="loading loading-spinner"></span>
+              ) : (
+                "Yes, Approve"
+              )}
+            </button>
+          </div>
+        </div>
+        <form method="dialog" className="modal-backdrop">
+          <button onClick={closeAllModals}>close</button>
+        </form>
+      </dialog>
+
+      {/* 2. REJECT MODAL */}
+      <dialog
+        className={`modal ${activeModal === "reject" ? "modal-open" : ""}`}
+      >
+        <div className="modal-box">
+          <h3 className="font-bold text-lg text-amber-600">Reject Payment?</h3>
+          <p className="py-4">
+            Are you sure you want to reject this payment proof? The order status
+            will return to <b>PENDING PAYMENT</b> and the user will be notified
+            to re-upload.
+          </p>
+          <div className="modal-action">
+            <button
+              className="btn"
+              onClick={closeAllModals}
+              disabled={actionLoading}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-warning text-white"
+              onClick={() => processUpdateStatus("PENDING_PAYMENT")}
+              disabled={actionLoading}
+            >
+              {actionLoading ? (
+                <span className="loading loading-spinner"></span>
+              ) : (
+                "Yes, Reject"
+              )}
+            </button>
+          </div>
+        </div>
+        <form method="dialog" className="modal-backdrop">
+          <button onClick={closeAllModals}>close</button>
+        </form>
+      </dialog>
+
+      {/* 3. SHIP MODAL */}
+      <dialog className={`modal ${activeModal === "ship" ? "modal-open" : ""}`}>
+        <div className="modal-box">
+          <h3 className="font-bold text-lg text-indigo-700">Ship Order?</h3>
+          <p className="py-4">
+            Mark this order as <b>SHIPPED</b>?
+            <br />
+            <span className="text-sm text-gray-500">
+              Ensure the physical package has been handed over to the courier.
+            </span>
+          </p>
+          <div className="modal-action">
+            <button
+              className="btn"
+              onClick={closeAllModals}
+              disabled={actionLoading}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => processUpdateStatus("SHIPPED")}
+              disabled={actionLoading}
+            >
+              {actionLoading ? (
+                <span className="loading loading-spinner"></span>
+              ) : (
+                "Confirm Shipment"
+              )}
+            </button>
+          </div>
+        </div>
+        <form method="dialog" className="modal-backdrop">
+          <button onClick={closeAllModals}>close</button>
+        </form>
+      </dialog>
+
+      {/* 4. CANCEL MODAL */}
+      <dialog
+        className={`modal ${activeModal === "cancel" ? "modal-open" : ""}`}
+      >
+        <div className="modal-box">
+          <h3 className="font-bold text-lg text-red-600">Cancel Order</h3>
+          <p className="py-2 text-sm text-gray-600">
+            Please provide a reason for cancelling this order. This will be
+            visible to the user.
+          </p>
+          <textarea
+            className="textarea textarea-bordered w-full mt-2"
+            placeholder="Reason (e.g. Out of stock, Invalid address)"
+            value={cancelReasonInput}
+            onChange={(e) => setCancelReasonInput(e.target.value)}
+          ></textarea>
+          <div className="modal-action">
+            <button
+              className="btn"
+              onClick={closeAllModals}
+              disabled={actionLoading}
+            >
+              Back
+            </button>
+            <button
+              className="btn btn-error text-white"
+              onClick={processCancelOrder}
+              disabled={actionLoading || !cancelReasonInput.trim()}
+            >
+              {actionLoading ? (
+                <span className="loading loading-spinner"></span>
+              ) : (
+                "Confirm Cancel"
+              )}
+            </button>
+          </div>
+        </div>
+        <form method="dialog" className="modal-backdrop">
+          <button onClick={closeAllModals}>close</button>
+        </form>
+      </dialog>
+
+      {/* 5. IMAGE ZOOM MODAL */}
       {showImageModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"

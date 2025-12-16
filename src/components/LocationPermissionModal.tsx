@@ -125,9 +125,6 @@ const LocationPermissionModal: React.FC<LocationPermissionModalProps> = ({
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-semibold">{store.name}</h4>
-                        <div className="badge badge-primary badge-sm">
-                          {store.distance} km
-                        </div>
                       </div>
                       <p className="text-sm text-gray-600 mb-2">
                         {store.address}

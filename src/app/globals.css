@@ -4,25 +4,66 @@
 @theme {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Kita definisikan radius agar UI terlihat lebih ramah (friendly) */
+  --radius-box: 1rem;
+  --radius-btn: 0.5rem;
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ============================================== */
+  /* GROCERY THEME PALETTE (Fresh Green & Blue)     */
+  /* Menggunakan format OKLCH untuk warna lebih hidup */
+  /* ============================================== */
+
+  /* PRIMARY: Emerald Green (Segar/Sayuran) */
+  --color-primary: oklch(65% 0.18 145);
+  --color-primary-content: oklch(98% 0.02 145);
+
+  /* SECONDARY: Sky Blue (Bersih/Terpercaya) */
+  --color-secondary: oklch(70% 0.15 230);
+  --color-secondary-content: oklch(98% 0.02 230);
+
+  /* ACCENT: Orange (Untuk Diskon/Promo/CTA) */
+  --color-accent: oklch(75% 0.18 50);
+  --color-accent-content: oklch(20% 0.05 50);
+
+  /* NEUTRAL: Slate Blue (Untuk Teks/Footer) */
+  --color-neutral: oklch(30% 0.05 240);
+  --color-neutral-content: oklch(98% 0 0);
+
+  /* BASE: Putih Bersih & Abu-abu Dingin (Background) */
+  --color-base-100: oklch(100% 0 0); /* Putih murni untuk Card/Modal */
+  --color-base-200: oklch(
+    97% 0.01 240
+  ); /* Abu sangat muda untuk Background Halaman */
+  --color-base-300: oklch(92% 0.02 240); /* Abu muda untuk Border/Divider */
+  --color-base-content: oklch(25% 0.02 240); /* Warna Teks Utama (Hitam soft) */
+
+  /* STATUS COLORS */
+  --color-success: oklch(65% 0.18 145);
+  --color-warning: oklch(85% 0.15 80);
+  --color-error: oklch(65% 0.2 30);
+
+  /* Next.js Default Variables (Mapped to DaisyUI) */
+  --background: var(
+    --color-base-200
+  ); /* Background halaman agak abu sedikit biar konten pop-up */
+  --foreground: var(--color-base-content);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* CATATAN: Saya menghapus @media (prefers-color-scheme: dark) 
+   agar tema terkunci di Light Mode (Cerah) sesuai request.
+*/
 
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   min-height: 100vh;
+  /* Tambahkan antialiasing agar font terlihat tajam & mahal */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Custom styles for auth pages */
@@ -39,27 +80,26 @@ body {
   max-width: 350px;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - Dipercantik agar sesuai tema hijau */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
+  background: #cbd5e1; /* Slate-300 */
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #94a3b8; /* Slate-400 */
 }
 
-/* Line clamp utilities */
+/* Line clamp utilities (Penting untuk nama produk panjang) */
 .line-clamp-1 {
   overflow: hidden;
   display: -webkit-box;
@@ -82,9 +122,17 @@ body {
   line-clamp: 3;
 }
 
-/* Smooth transitions */
-* {
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+/* Smooth transitions 
+   [OPTIMISASI] Jangan gunakan '*' (all elements) karena berat untuk performa browser.
+   Targetkan elemen interaktif saja.
+*/
+button,
+a,
+input,
+.card,
+.btn,
+.badge {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Toast Animations */
@@ -103,24 +151,21 @@ body {
   animation: fade-in-up 0.3s ease-out;
 }
 
-/* Toast styling */
+/* Toast styling enhancement */
 .toast {
-  position: fixed;
-  z-index: 9999;
+  z-index: 10000 !important;
 }
 
 .toast .alert {
   min-width: 300px;
   max-width: 400px;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  /* Tambahkan shadow agar toast lebih 'pop' di background terang */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .toast .alert:hover {
   transform: translateY(-2px);
-}
-
-/* Ensure toast appears above modals */
-.toast {
-  z-index: 10000 !important;
 }
