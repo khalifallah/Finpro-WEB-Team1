@@ -2,11 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { axiosInstance } from "@/libs/axios/axios.config";
-import {
-  CreateAddressData,
-  UpdateAddressData,
-  UserAddress,
-} from "@/types/address";
+import { CreateAddressData, UserAddress } from "@/types/address";
 import { useToast } from "@/contexts/ToastContext";
 
 interface AddressFormProps {
@@ -20,7 +16,8 @@ export default function AddressForm({
   onSuccess,
   onCancel,
 }: AddressFormProps) {
-  const [formData, setFormData] = useState<CreateAddressData>({
+  // Add cityId and provinceId to initial state
+  const [formData, setFormData] = useState<any>({
     label: address?.label || "",
     fullAddress: address?.fullAddress || "",
     latitude: address?.latitude || 0,
@@ -28,24 +25,72 @@ export default function AddressForm({
     recipientName: address?.recipientName || "",
     recipientPhone: address?.recipientPhone || "",
     isMain: address?.isMain || false,
+    // [NEW] Add these fields
+    cityId: (address as any)?.cityId || "",
+    provinceId: (address as any)?.provinceId || "",
   });
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+  // [NEW] States for Dropdowns
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [isFetchingCities, setIsFetchingCities] = useState(false);
+
   const { showToast } = useToast();
 
-  // Add useEffect to handle body scroll
+  // Prevent background scrolling
   useEffect(() => {
-    // Prevent background scrolling when modal is open
     document.body.style.overflow = "hidden";
-
     return () => {
       document.body.style.overflow = "auto";
     };
   }, []);
 
+  // [NEW] Fetch Provinces on Mount
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      try {
+        const response = await axiosInstance.get("/orders/shipping/provinces");
+        // Handle mock data structure or real API structure
+        const data = response.data.data?.provinces || response.data.data || [];
+        setProvinces(data);
+      } catch (err) {
+        console.error("Failed to fetch provinces:", err);
+      }
+    };
+    fetchProvinces();
+  }, []);
+
+  // [NEW] Fetch Cities when Province Changes (or on Edit load)
+  useEffect(() => {
+    if (formData.provinceId) {
+      const fetchCities = async () => {
+        setIsFetchingCities(true);
+        try {
+          const response = await axiosInstance.get(
+            `/orders/shipping/cities?provinceId=${formData.provinceId}`
+          );
+          const data = response.data.data?.cities || response.data.data || [];
+          setCities(data);
+        } catch (err) {
+          console.error("Failed to fetch cities:", err);
+        } finally {
+          setIsFetchingCities(false);
+        }
+      };
+      fetchCities();
+    } else {
+      setCities([]);
+    }
+  }, [formData.provinceId]);
+
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value, type } = e.target;
 
@@ -53,6 +98,13 @@ export default function AddressForm({
       setFormData({
         ...formData,
         [name]: (e.target as HTMLInputElement).checked,
+      });
+    } else if (name === "provinceId") {
+      // Reset city when province changes
+      setFormData({
+        ...formData,
+        provinceId: value,
+        cityId: "", // Clear city selection
       });
     } else {
       setFormData({
@@ -96,7 +148,7 @@ export default function AddressForm({
 
             const fullAddress = addressParts.join(", ");
 
-            setFormData((prev) => ({
+            setFormData((prev: any) => ({
               ...prev,
               latitude,
               longitude,
@@ -105,7 +157,7 @@ export default function AddressForm({
                 "Location detected, please enter full address details",
             }));
           } else {
-            setFormData((prev) => ({
+            setFormData((prev: any) => ({
               ...prev,
               latitude,
               longitude,
@@ -115,7 +167,7 @@ export default function AddressForm({
             );
           }
         } catch (error) {
-          setFormData((prev) => ({
+          setFormData((prev: any) => ({
             ...prev,
             latitude,
             longitude,
@@ -138,8 +190,16 @@ export default function AddressForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // [NEW] Validation for City ID
+    if (!formData.cityId || !formData.provinceId) {
+      setError("Please select both Province and City");
+      return;
+    }
+
     setIsLoading(true);
     setError("");
+
     try {
       if (address) {
         // Update existing address
@@ -228,10 +288,56 @@ export default function AddressForm({
             </div>
           </div>
 
+          {/* [NEW] Province & City Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Province *</span>
+              </label>
+              <select
+                name="provinceId"
+                className="select select-bordered w-full"
+                value={formData.provinceId}
+                onChange={handleChange}
+                required
+              >
+                <option value="">Select Province</option>
+                {provinces.map((p) => (
+                  <option key={p.province_id} value={p.province_id}>
+                    {p.province}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">City *</span>
+              </label>
+              <select
+                name="cityId"
+                className="select select-bordered w-full"
+                value={formData.cityId}
+                onChange={handleChange}
+                required
+                disabled={!formData.provinceId || isFetchingCities}
+              >
+                <option value="">
+                  {isFetchingCities ? "Loading..." : "Select City"}
+                </option>
+                {cities.map((c) => (
+                  <option key={c.city_id} value={c.city_id}>
+                    {c.type} {c.city_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           {/* Full Address */}
           <div className="form-control">
             <label className="label">
-              <span className="label-text">Full Address *</span>
+              <span className="label-text">Full Address Details *</span>
             </label>
             <textarea
               name="fullAddress"
@@ -239,7 +345,7 @@ export default function AddressForm({
               value={formData.fullAddress}
               onChange={handleChange}
               required
-              placeholder="Street address, city, province, postal code"
+              placeholder="Street name, house number, unit number, etc."
             />
           </div>
 
@@ -262,7 +368,7 @@ export default function AddressForm({
             {/* Location Button */}
             <div className="form-control">
               <label className="label">
-                <span className="label-text">Get Location</span>
+                <span className="label-text">Pin Location</span>
               </label>
               <button
                 type="button"

@@ -26,6 +26,36 @@ export default function CheckoutPage() {
   const [checkoutPreview, setCheckoutPreview] =
     useState<CheckoutPreview | null>(null);
 
+  const [cities, setCities] = useState<any[]>([]);
+  const [provinces, setProvinces] = useState<any[]>([]);
+
+  // Fungsi untuk mendapatkan data provinsi
+  const fetchProvinces = async () => {
+    try {
+      const response = await axiosInstance.get("/orders/shipping/provinces");
+      setProvinces(response.data.data.provinces);
+    } catch (error) {
+      console.error("Failed to fetch provinces:", error);
+    }
+  };
+
+  // Fungsi untuk mendapatkan data kota berdasarkan provinsi
+  const fetchCities = async (provinceId: string) => {
+    try {
+      const response = await axiosInstance.get(
+        `/orders/shipping/cities?provinceId=${provinceId}`
+      );
+      setCities(response.data.data.cities);
+    } catch (error) {
+      console.error("Failed to fetch cities:", error);
+    }
+  };
+
+  // Gunakan di useEffect
+  useEffect(() => {
+    fetchProvinces();
+  }, []);
+
   // State Data
   const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(
     null
@@ -152,6 +182,12 @@ export default function CheckoutPage() {
 
       if (shippingOptions.length === 0) {
         setError("No shipping methods available for this location.");
+      } else {
+        // [FIX] Otomatis pilih opsi termurah jika belum ada yang dipilih
+        if (!selectedShipping) {
+          // Opsi biasanya sudah disortir berdasarkan harga termurah dari backend
+          handleShippingSelect(shippingOptions[0]);
+        }
       }
     } catch (err: any) {
       console.error("Calculate shipping error:", err);
@@ -259,7 +295,7 @@ export default function CheckoutPage() {
       voucherCode: code || undefined,
     });
 
-    console.log("Validation Response:", response.data.data); // DEBUG: Cek console browser!
+    console.log("Validation Response:", response.data.data);
     setValidationResult(response.data.data);
   };
 
@@ -459,9 +495,9 @@ export default function CheckoutPage() {
                   ) : validationResult.availableShippingMethods.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-in fade-in zoom-in duration-300">
                       {validationResult.availableShippingMethods.map(
-                        (shipping) => (
+                        (shipping, index) => (
                           <div
-                            key={shipping.serviceCode}
+                            key={`${shipping.serviceCode}-${index}`}
                             className={`
                             relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md
                             ${
@@ -520,45 +556,48 @@ export default function CheckoutPage() {
                   Items ({checkoutPreview.cartSummary.length})
                 </h2>
                 <div className="divide-y divide-base-200">
-                  {checkoutPreview.cartSummary.map((item: any) => (
-                    <div
-                      key={item.productId}
-                      className="flex gap-4 py-4 first:pt-0 last:pb-0"
-                    >
-                      <div className="w-16 h-16 rounded-lg bg-base-200 shrink-0 overflow-hidden border border-base-200">
-                        {item.imageUrl && (
-                          <img
-                            src={item.imageUrl}
-                            alt={item.productName}
-                            className="w-full h-full object-cover"
-                          />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-sm truncate">
-                          {item.productName}
-                        </h4>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Qty: {item.quantity}
-                        </p>
-                        {item.discountAmount > 0 && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 mt-1">
-                            Saved {formatPrice(item.discountAmount)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold text-sm">
-                          {formatPrice(item.total)}
+                  {/* FIXED HERE: Key includes index to handle duplicate product IDs */}
+                  {checkoutPreview.cartSummary.map(
+                    (item: any, index: number) => (
+                      <div
+                        key={`${item.productId}-${index}`}
+                        className="flex gap-4 py-4 first:pt-0 last:pb-0"
+                      >
+                        <div className="w-16 h-16 rounded-lg bg-base-200 shrink-0 overflow-hidden border border-base-200">
+                          {item.imageUrl && (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.productName}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
                         </div>
-                        {item.discountAmount > 0 && (
-                          <div className="text-xs text-gray-400 line-through">
-                            {formatPrice(item.total + item.discountAmount)}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-sm truncate">
+                            {item.productName}
+                          </h4>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Qty: {item.quantity}
+                          </p>
+                          {item.discountAmount > 0 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 mt-1">
+                              Saved {formatPrice(item.discountAmount)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-sm">
+                            {formatPrice(item.total)}
                           </div>
-                        )}
+                          {item.discountAmount > 0 && (
+                            <div className="text-xs text-gray-400 line-through">
+                              {formatPrice(item.total + item.discountAmount)}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  )}
                 </div>
               </div>
             </div>
